@@ -45,7 +45,7 @@ export function BottomBar() {
   const game = useGame();
   const [tab, setTab] = useState<TabId>("road");
 
-  const isBuilding = game.tool.kind === "build";
+  const build = game.tool.kind === "build" ? game.tool : null;
 
   return (
     <div className="pointer-events-auto absolute inset-x-0 bottom-0 z-30">
@@ -84,7 +84,7 @@ export function BottomBar() {
             {tab === "road" && (
               <div className="flex w-full items-center gap-3">
                 <PaletteItem
-                  active={isBuilding && game.tool.sub === "road"}
+                  active={build?.sub === "road"}
                   onClick={() => game.setTool({ kind: "build", sub: "road" })}
                   label="Lay Road"
                 />
@@ -99,7 +99,7 @@ export function BottomBar() {
                 <PaletteItem
                   key={b.id}
                   label={b.label}
-                  active={isBuilding && game.tool.sub === "building" && game.tool.variant === b.id}
+                  active={build?.sub === "building" && build.variant === b.id}
                   onClick={() => game.setTool({ kind: "build", sub: "building", variant: b.id })}
                 />
               ))}
@@ -109,13 +109,13 @@ export function BottomBar() {
                   <PaletteItem
                     key={n.id}
                     label={n.label}
-                    active={isBuilding && game.tool.sub === "nature" && game.tool.variant === n.id}
+                    active={build?.sub === "nature" && build.variant === n.id}
                     onClick={() => game.setTool({ kind: "build", sub: "nature", variant: n.id })}
                   />
                 ))}
                 <PaletteItem
                   label="Forest Brush 🌲"
-                  active={isBuilding && game.tool.sub === "forest"}
+                  active={build?.sub === "forest"}
                   onClick={() => game.setTool({ kind: "build", sub: "forest" })}
                 />
               </>
@@ -125,7 +125,7 @@ export function BottomBar() {
                 <PaletteItem
                   key={w.id}
                   label={w.label}
-                  active={isBuilding && game.tool.sub === "water" && game.tool.variant === w.id}
+                  active={build?.sub === "water" && build.variant === w.id}
                   onClick={() => game.setTool({ kind: "build", sub: "water", variant: w.id })}
                 />
               ))}
@@ -134,7 +134,7 @@ export function BottomBar() {
                 <PaletteItem
                   key={s.id}
                   label={s.label}
-                  active={isBuilding && game.tool.sub === "sign" && game.tool.variant === s.id}
+                  active={build?.sub === "sign" && build.variant === s.id}
                   onClick={() => game.setTool({ kind: "build", sub: "sign", variant: s.id })}
                 />
               ))}
