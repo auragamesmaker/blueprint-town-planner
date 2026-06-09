@@ -157,5 +157,44 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    font-family: var(--font-sans);
   }
+}
+
+@utility font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+}
+
+@utility text-emoji-white {
+  /* Render emoji glyphs as pure white silhouettes */
+  filter: brightness(0) invert(1);
+}
+
+@utility btn-glow {
+  box-shadow: var(--shadow-glow);
+  transition: transform 200ms ease, box-shadow 300ms ease;
+  &:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 0 80px oklch(0.82 0.14 12 / 0.9);
+  }
+}
+
+@keyframes petal-fall {
+  0% { transform: translate3d(0, -10vh, 0) rotate(0deg); opacity: 0; }
+  10% { opacity: 0.9; }
+  100% { transform: translate3d(var(--drift, 40px), 110vh, 0) rotate(360deg); opacity: 0.4; }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 30px oklch(0.82 0.14 12 / 0.5), inset 0 1px 0 oklch(1 0 0 / 0.4); }
+  50% { box-shadow: 0 0 70px oklch(0.82 0.14 12 / 0.9), inset 0 1px 0 oklch(1 0 0 / 0.5); }
+}
+
+@keyframes rain-fall {
+  to { transform: translateY(110vh); }
+}
+
+@keyframes snow-fall {
+  to { transform: translate3d(20px, 110vh, 0) rotate(180deg); }
 }
