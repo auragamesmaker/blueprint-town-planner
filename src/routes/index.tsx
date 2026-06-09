@@ -5,7 +5,7 @@ import { SakuraPetals } from "@/components/blueprint/SakuraPetals";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Blueprint — A Top-Down City Builder" },
+      { title: "Blueprint — A town Builder" },
       { name: "description", content: "Design tranquil top-down towns and cities under falling cherry blossoms." },
       { property: "og:title", content: "Blueprint" },
       { property: "og:description", content: "A top-down city builder, freely playful, no economy — just creation." },
@@ -40,14 +40,14 @@ function Index() {
 
       <section className="relative z-10 mx-auto flex min-h-screen max-w-5xl flex-col items-center justify-center px-6 text-center">
         <p className="mb-3 text-sm tracking-[0.5em] text-foreground/70 uppercase">
-          A Top-Down Builder
+          A town Builder
         </p>
         <h1 className="font-display text-[clamp(4rem,14vw,11rem)] leading-none text-foreground drop-shadow-sm">
           Blueprint
         </h1>
         <p className="mt-4 max-w-xl text-base text-muted-foreground md:text-lg">
-          Lay roads, raise neighborhoods, plant whole forests. No money, no rush —
-          just the quiet pleasure of a town taking shape under the cherry trees.
+          Lay roads, neighborhoods, plants, whole forests.
+          Just the quietness of a town taking shape under the trees.
         </p>
 
         <div className="mt-12 flex flex-col items-center gap-5">

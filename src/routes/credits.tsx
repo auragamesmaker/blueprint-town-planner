@@ -28,7 +28,7 @@ function CreditsPage() {
         <div className="mt-12 space-y-6">
           <div className="rounded-2xl border border-border bg-card px-12 py-6 shadow-[var(--shadow-petal)]">
             <p className="text-xs tracking-[0.35em] uppercase text-muted-foreground">
-              Created by
+              Scripted by
             </p>
             <p className="font-display mt-2 text-4xl text-foreground">Issa Freij</p>
           </div>
