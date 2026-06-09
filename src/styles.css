@@ -61,6 +61,14 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
+@theme inline {
+  --color-sakura-pink: var(--sakura-pink);
+  --color-sakura-deep: var(--sakura-deep);
+  --color-sakura-cream: var(--sakura-cream);
+  --font-display: "Cormorant Garamond", "Playfair Display", serif;
+  --font-sans: "Inter", system-ui, sans-serif;
+}
+
 :root {
   --radius: 0.75rem;
   /* Sakura / cherry blossom theme */
