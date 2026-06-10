@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { useGame } from "@/lib/blueprint/store";
+import { PROP_CATALOG, PROP_CATEGORIES } from "@/lib/blueprint/catalog";
 
 const TABS = [
   { id: "road", label: "Roads", emoji: "🛣️" },
   { id: "building", label: "Buildings", emoji: "🏠" },
   { id: "nature", label: "Nature", emoji: "🌳" },
+  { id: "prop", label: "Props", emoji: "🪑" },
   { id: "water", label: "Water", emoji: "💧" },
   { id: "sign", label: "Signs", emoji: "🪧" },
   { id: "settings", label: "Settings", emoji: "⚙️" },
@@ -138,6 +140,7 @@ export function BottomBar() {
                   onClick={() => game.setTool({ kind: "build", sub: "sign", variant: s.id })}
                 />
               ))}
+            {tab === "prop" && <PropPalette />}
             {tab === "settings" && <SettingsPanel />}
           </div>
         </div>
@@ -166,6 +169,71 @@ function PaletteItem({
     >
       {label}
     </button>
+  );
+}
+
+function PropPalette() {
+  const game = useGame();
+  const [cat, setCat] = useState<string>(PROP_CATEGORIES[0]);
+  const [q, setQ] = useState("");
+  const build = game.tool.kind === "build" ? game.tool : null;
+  const items = PROP_CATALOG.filter(
+    (p) =>
+      p.category === cat &&
+      (q.trim() === "" || p.name.toLowerCase().includes(q.toLowerCase())),
+  );
+  return (
+    <div className="flex w-full flex-col gap-2">
+      <div className="flex items-center gap-2">
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder={`Search ${PROP_CATALOG.length} items…`}
+          className="flex-1 rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-sm text-white outline-none focus:border-white/40"
+        />
+        <div className="flex items-center gap-1 overflow-x-auto">
+          {PROP_CATEGORIES.map((c) => (
+            <button
+              key={c}
+              onClick={() => setCat(c)}
+              className={`whitespace-nowrap rounded-full border px-3 py-1 text-xs uppercase tracking-wider transition ${
+                cat === c
+                  ? "border-white/60 bg-white/15 text-white"
+                  : "border-white/10 text-white/60 hover:bg-white/10"
+              }`}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="flex max-h-40 flex-wrap gap-1.5 overflow-y-auto pr-1">
+        {items.map((p) => {
+          const on = build?.sub === "prop" && build.variant === p.id;
+          return (
+            <button
+              key={p.id}
+              onClick={() => game.setTool({ kind: "build", sub: "prop", variant: p.id })}
+              className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs transition ${
+                on
+                  ? "border-white/60 bg-white/15 text-white"
+                  : "border-white/10 bg-white/5 text-white/75 hover:bg-white/10"
+              }`}
+              title={p.name}
+            >
+              <span
+                className="inline-block h-3 w-3 rounded-full border border-white/30"
+                style={{ background: p.color }}
+              />
+              {p.name}
+            </button>
+          );
+        })}
+        {items.length === 0 && (
+          <p className="text-xs text-white/40">No items match.</p>
+        )}
+      </div>
+    </div>
   );
 }
 

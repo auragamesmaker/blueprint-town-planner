@@ -33,7 +33,7 @@ export function SakuraPetals({ count = 40 }: { count?: number }) {
           <svg viewBox="0 0 24 24" className="w-full h-full">
             <path
               d="M12 2c2 4 6 6 10 6-2 4-2 8 0 12-4 0-8 2-10 6-2-4-6-6-10-6 2-4 2-8 0-12 4 0 8-2 10-6z"
-              fill="oklch(0.85 0.12 8)"
+              fill="oklch(0.78 0.14 235)"
               opacity="0.85"
             />
           </svg>
