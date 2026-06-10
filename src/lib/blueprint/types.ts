@@ -30,6 +30,7 @@ export type Building = {
   size: Vec2;
   rotation: number;
   snap: boolean;
+  color?: string;
 };
 
 export type NatureKind = "grass" | "tree" | "bush" | "flower";
@@ -41,6 +42,7 @@ export type NatureObj = {
   pos: Vec2;
   size: number;
   rotation: number;
+  color?: string;
 };
 
 export type WaterKind = "pond" | "lake" | "river";
@@ -64,7 +66,22 @@ export type SignObj = {
   rotation: number;
 };
 
-export type AnyObject = RoadSegment | Building | NatureObj | WaterObj | SignObj;
+export type RoadDecalKind = "crosswalk" | "trafficLight" | "stopSign";
+export type RoadDecal = {
+  id: string;
+  kind: "roadDecal";
+  variant: RoadDecalKind;
+  roadId: string;
+  t: number; // 0..1 along road
+};
+
+export type AnyObject =
+  | RoadSegment
+  | Building
+  | NatureObj
+  | WaterObj
+  | SignObj
+  | RoadDecal;
 
 export type CityState = {
   objects: AnyObject[];

@@ -131,7 +131,12 @@ export const useGame = create<GameStore>((set, get) => ({
   },
   deleteObject: (id) => {
     set((s) => ({
-      city: { ...s.city, objects: s.city.objects.filter((o) => o.id !== id) },
+      city: {
+        ...s.city,
+        objects: s.city.objects.filter(
+          (o) => o.id !== id && !(o.kind === "roadDecal" && o.roadId === id),
+        ),
+      },
       selectedId: s.selectedId === id ? null : s.selectedId,
     }));
     get().save();
