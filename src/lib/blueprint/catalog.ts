@@ -258,6 +258,23 @@ export const PROP_CATALOG: PropDef[] = [
   mk("d-pot",            "Planter Pot",      "Decor",    "topiary",     "#a85a3a", 12),
   mk("d-tent",           "Camping Tent",     "Decor",    "tent",        "#cf6a3a", 22),
   mk("d-buoy",           "Decorative Buoy",  "Decor",    "buoy",        "#c8a02a", 8),
+
+  // ────────── Extras (15)
+  mk("x-bench-modern",   "Modern Bench",     "Street",   "bench2",      "#dadada", 18),
+  mk("x-lamp-tall",      "Tall Lamp",        "Street",   "streetLamp",  "#1a1a1a", 16),
+  mk("x-lamp-double",    "Double Lamp",      "Street",   "lampPost2",   "#1a1a1a", 16),
+  mk("x-mailbox-green",  "Green Mailbox",    "Street",   "mailbox",     "#2f7a3a", 10),
+  mk("x-truck-blue",     "Blue Box Truck",   "Vehicles", "boxTruck",    "#2a5fc0", 32),
+  mk("x-truck-white",    "White Box Truck",  "Vehicles", "boxTruck",    "#f0f0f0", 32),
+  mk("x-suv-white",      "SUV (White)",      "Vehicles", "suv",         "#ececec", 26),
+  mk("x-bike-blue",      "Blue Bicycle",     "Vehicles", "bike",        "#2a5fc0", 12),
+  mk("x-stump-mossy",    "Mossy Stump",      "Trees",    "stump",       "#5a7a4a", 10),
+  mk("x-flower-marigold","Marigolds",        "Flowers",  "marigold",    "#f0a020", 8),
+  mk("x-flower-orchid",  "Orchids",          "Flowers",  "orchid",      "#c87ad8", 8),
+  mk("x-flower-violets", "Violets",          "Flowers",  "violets",     "#7a4ac8", 8),
+  mk("x-flower-dandelion","Dandelions",      "Flowers",  "dandelion",   "#f0d040", 8),
+  mk("x-cone-tall",      "Tall Cone",        "Industrial","trafficCone","#f06a1a", 10),
+  mk("x-pallet-stack",   "Pallet Stack",     "Industrial","pallet",     "#7a5a3a", 14),
 ];
 
 export const PROP_CATEGORIES = Array.from(
