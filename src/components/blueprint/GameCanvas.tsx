@@ -12,6 +12,7 @@ import type {
   BuildingKind,
   NatureKind,
   NatureObj,
+  RoadDecal,
   RoadSegment,
   SignKind,
   SignObj,
@@ -21,38 +22,50 @@ import type {
 } from "@/lib/blueprint/types";
 
 const BUILDING_SIZES: Record<BuildingKind, Vec2> = {
-  house: { x: 80, y: 80 },
-  apartment: { x: 120, y: 160 },
-  "town-office": { x: 140, y: 120 },
-  "town-hall": { x: 180, y: 140 },
-  store: { x: 120, y: 100 },
-  library: { x: 140, y: 110 },
-  restaurant: { x: 110, y: 100 },
+  house: { x: 90, y: 110 },
+  apartment: { x: 130, y: 170 },
+  "town-office": { x: 150, y: 130 },
+  "town-hall": { x: 200, y: 150 },
+  store: { x: 140, y: 110 },
+  library: { x: 160, y: 120 },
+  restaurant: { x: 130, y: 110 },
 };
 
-const BUILDING_COLORS: Record<BuildingKind, string> = {
-  house: "#d8b48a",
-  apartment: "#9caec0",
-  "town-office": "#c9b890",
-  "town-hall": "#b8967a",
-  store: "#c4a8a0",
-  library: "#a8b89c",
-  restaurant: "#c89878",
+export const BUILDING_COLORS: Record<BuildingKind, string> = {
+  house: "#e6d3b3",
+  apartment: "#b4c2d2",
+  "town-office": "#d4c89a",
+  "town-hall": "#c9a48a",
+  store: "#d4b8a8",
+  library: "#b8c8a8",
+  restaurant: "#d8a888",
 };
 
-const NATURE_COLORS: Record<NatureKind, string> = {
+const ROOF_COLORS: Record<BuildingKind, string> = {
+  house: "#7a3a2e",
+  apartment: "#3d4a5a",
+  "town-office": "#5a4a3a",
+  "town-hall": "#4a3030",
+  store: "#5a3a3a",
+  library: "#3a4a3a",
+  restaurant: "#6a3a2a",
+};
+
+export const NATURE_DEFAULT_COLORS: Record<NatureKind, string> = {
   grass: "#a8c896",
-  tree: "#5a8a4e",
-  bush: "#7aa86e",
+  tree: "#3f7a3a",
+  bush: "#6a9a5e",
   flower: "#e6a4c0",
 };
 
 const NATURE_SIZES: Record<NatureKind, number> = {
   grass: 60,
-  tree: 28,
+  tree: 30,
   bush: 18,
   flower: 10,
 };
+
+const WATER_COLOR = "#5a93b8";
 
 export function GameCanvas() {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -60,19 +73,16 @@ export function GameCanvas() {
   const game = useGame();
   const [dims, setDims] = useState({ w: 800, h: 600 });
 
-  // road dragging
   const [roadStart, setRoadStart] = useState<Vec2 | null>(null);
   const [mousePos, setMousePos] = useState<Vec2 | null>(null);
-  // pan
-  const panRef = useRef<{ x: number; y: number; cx: number; cy: number } | null>(
-    null,
-  );
-  // water building
+  const panRef = useRef<{ x: number; y: number; cx: number; cy: number } | null>(null);
   const [waterPoints, setWaterPoints] = useState<Vec2[]>([]);
-  // moving an object
-  const movingRef = useRef<{ id: string; offset: Vec2 } | null>(null);
+  const movingRef = useRef<
+    | { kind: "obj"; id: string; offset: Vec2 }
+    | { kind: "decal"; id: string }
+    | null
+  >(null);
 
-  // resize
   useEffect(() => {
     if (!containerRef.current) return;
     const ro = new ResizeObserver(([e]) => {
@@ -82,7 +92,6 @@ export function GameCanvas() {
     return () => ro.disconnect();
   }, []);
 
-  // render
   useEffect(() => {
     const c = ref.current;
     if (!c) return;
@@ -97,7 +106,6 @@ export function GameCanvas() {
     draw(ctx, dims.w, dims.h, game, roadStart, mousePos, waterPoints);
   }, [dims, game.city, game.camera, game.selectedId, roadStart, mousePos, waterPoints, game]);
 
-  // global mousemove for live preview
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
       if (!ref.current) return;
@@ -108,8 +116,7 @@ export function GameCanvas() {
     return () => window.removeEventListener("mousemove", onMove);
   }, []);
 
-  const toWorld = (sx: number, sy: number) =>
-    screenToWorld(sx, sy, game.camera);
+  const toWorld = (sx: number, sy: number) => screenToWorld(sx, sy, game.camera);
 
   const handleDown = (e: React.MouseEvent) => {
     const rect = ref.current!.getBoundingClientRect();
@@ -117,7 +124,6 @@ export function GameCanvas() {
     const sy = e.clientY - rect.top;
     const world = toWorld(sx, sy);
 
-    // middle button or space = pan
     if (e.button === 1 || e.shiftKey) {
       panRef.current = { x: e.clientX, y: e.clientY, cx: game.camera.x, cy: game.camera.y };
       return;
@@ -131,20 +137,24 @@ export function GameCanvas() {
 
     if (game.tool.kind === "move") {
       const hit = hitTest(world, game.city.objects);
-      if (hit && hit.kind !== "water" && hit.kind !== "road") {
-        game.select(hit.id);
-        const pos = (hit as Building | NatureObj | SignObj).pos;
+      if (!hit) {
+        game.select(null);
+        return;
+      }
+      game.select(hit.id);
+      if (hit.kind === "roadDecal") {
+        movingRef.current = { kind: "decal", id: hit.id };
+      } else if (hit.kind === "building" || hit.kind === "nature" || hit.kind === "sign") {
+        const pos = hit.pos;
         movingRef.current = {
+          kind: "obj",
           id: hit.id,
           offset: { x: world.x - pos.x, y: world.y - pos.y },
         };
-      } else {
-        game.select(hit?.id ?? null);
       }
       return;
     }
 
-    // build
     if (game.tool.kind === "build") {
       const sub = game.tool.sub;
       if (sub === "road") {
@@ -154,10 +164,8 @@ export function GameCanvas() {
       } else if (sub === "building") {
         const variant = (game.tool.variant ?? "house") as BuildingKind;
         const size = BUILDING_SIZES[variant];
-        const pos = game.snapToGrid
-          ? { x: snap(world.x), y: snap(world.y) }
-          : world;
-        const b: Building = {
+        const pos = game.snapToGrid ? { x: snap(world.x), y: snap(world.y) } : world;
+        game.addObject({
           id: newId(),
           kind: "building",
           variant,
@@ -165,21 +173,18 @@ export function GameCanvas() {
           size,
           rotation: 0,
           snap: game.snapToGrid,
-        };
-        game.addObject(b);
+        } as Building);
       } else if (sub === "nature") {
         const variant = (game.tool.variant ?? "tree") as NatureKind;
-        const n: NatureObj = {
+        game.addObject({
           id: newId(),
           kind: "nature",
           variant,
           pos: world,
           size: NATURE_SIZES[variant],
           rotation: Math.random() * Math.PI * 2,
-        };
-        game.addObject(n);
+        } as NatureObj);
       } else if (sub === "forest") {
-        // brush — scatter several trees around click
         for (let i = 0; i < 12; i++) {
           const a = Math.random() * Math.PI * 2;
           const r = Math.random() * 90;
@@ -198,15 +203,14 @@ export function GameCanvas() {
         if (variant === "pond" || variant === "lake") {
           const r = variant === "pond" ? 60 : 140;
           const pts: Vec2[] = [];
-          const sides = variant === "pond" ? 10 : 14;
+          const sides = variant === "pond" ? 12 : 18;
           for (let i = 0; i < sides; i++) {
             const a = (i / sides) * Math.PI * 2;
-            const rr = r * (0.8 + Math.random() * 0.35);
+            const rr = r * (0.85 + Math.random() * 0.25);
             pts.push({ x: world.x + Math.cos(a) * rr, y: world.y + Math.sin(a) * rr });
           }
           game.addObject({ id: newId(), kind: "water", variant, points: pts });
         } else {
-          // river: collect points across clicks; double-click to finish
           if (e.detail === 2 && waterPoints.length >= 2) {
             game.addObject({
               id: newId(),
@@ -226,7 +230,8 @@ export function GameCanvas() {
           kind: "sign",
           variant,
           pos: world,
-          text: variant === "street" ? "Main St" : variant === "town" ? "Welcome to Town" : "Highway 1",
+          text:
+            variant === "street" ? "Main St" : variant === "town" ? "Welcome to Town" : "Highway 1",
           rotation: 0,
         };
         game.addObject(s);
@@ -244,15 +249,27 @@ export function GameCanvas() {
     if (movingRef.current) {
       const rect = ref.current!.getBoundingClientRect();
       const world = toWorld(e.clientX - rect.left, e.clientY - rect.top);
-      const obj = game.city.objects.find((o) => o.id === movingRef.current!.id);
-      if (!obj) return;
-      let nx = world.x - movingRef.current.offset.x;
-      let ny = world.y - movingRef.current.offset.y;
-      if ((obj as Building).snap) {
-        nx = snap(nx);
-        ny = snap(ny);
+      const mv = movingRef.current;
+      if (mv.kind === "obj") {
+        const obj = game.city.objects.find((o) => o.id === mv.id);
+        if (!obj) return;
+        let nx = world.x - mv.offset.x;
+        let ny = world.y - mv.offset.y;
+        if ((obj as Building).snap) {
+          nx = snap(nx);
+          ny = snap(ny);
+        }
+        game.updateObject(obj.id, { pos: { x: nx, y: ny } } as Partial<AnyObject>);
+      } else {
+        const decal = game.city.objects.find((o) => o.id === mv.id) as RoadDecal | undefined;
+        if (!decal) return;
+        const road = game.city.objects.find(
+          (o) => o.id === decal.roadId,
+        ) as RoadSegment | undefined;
+        if (!road) return;
+        const t = projectT(world, road.a, road.b);
+        game.updateObject(decal.id, { t } as Partial<AnyObject>);
       }
-      game.updateObject(obj.id, { pos: { x: nx, y: ny } } as Partial<AnyObject>);
     }
   };
 
@@ -299,7 +316,6 @@ export function GameCanvas() {
     game.zoomAt(factor, sx, sy);
   };
 
-  // rotate selected on R key
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "r" || e.key === "R") {
@@ -341,24 +357,65 @@ function snapPoint(p: Vec2, doSnap: boolean): Vec2 {
   return doSnap ? { x: snap(p.x), y: snap(p.y) } : p;
 }
 
+function projectT(p: Vec2, a: Vec2, b: Vec2) {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const len2 = dx * dx + dy * dy;
+  if (len2 === 0) return 0;
+  let t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2;
+  if (t < 0) t = 0;
+  if (t > 1) t = 1;
+  return t;
+}
+
+function pointAt(road: RoadSegment, t: number): Vec2 {
+  return {
+    x: road.a.x + (road.b.x - road.a.x) * t,
+    y: road.a.y + (road.b.y - road.a.y) * t,
+  };
+}
+
+function pointInPoly(p: Vec2, pts: Vec2[]) {
+  let inside = false;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const xi = pts[i].x,
+      yi = pts[i].y;
+    const xj = pts[j].x,
+      yj = pts[j].y;
+    const intersect =
+      yi > p.y !== yj > p.y &&
+      p.x < ((xj - xi) * (p.y - yi)) / (yj - yi + 1e-9) + xi;
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
 function hitTest(p: Vec2, objs: AnyObject[]): AnyObject | null {
-  // iterate top to bottom
   for (let i = objs.length - 1; i >= 0; i--) {
     const o = objs[i];
-    if (o.kind === "building") {
+    if (o.kind === "roadDecal") {
+      const road = objs.find((x) => x.id === o.roadId) as RoadSegment | undefined;
+      if (!road) continue;
+      const c = pointAt(road, o.t);
+      if (Math.hypot(p.x - c.x, p.y - c.y) < 16) return o;
+    } else if (o.kind === "building") {
       const dx = p.x - o.pos.x;
       const dy = p.y - o.pos.y;
       if (Math.abs(dx) < o.size.x / 2 && Math.abs(dy) < o.size.y / 2) return o;
     } else if (o.kind === "nature") {
-      const d = Math.hypot(p.x - o.pos.x, p.y - o.pos.y);
-      if (d < o.size) return o;
+      if (Math.hypot(p.x - o.pos.x, p.y - o.pos.y) < o.size) return o;
     } else if (o.kind === "sign") {
-      const dx = p.x - o.pos.x;
-      const dy = p.y - o.pos.y;
-      if (Math.abs(dx) < 40 && Math.abs(dy) < 16) return o;
+      if (Math.abs(p.x - o.pos.x) < 40 && Math.abs(p.y - o.pos.y) < 16) return o;
     } else if (o.kind === "road") {
-      const d = distToSegment(p, o.a, o.b);
-      if (d < o.width / 2 + 4) return o;
+      if (distToSegment(p, o.a, o.b) < o.width / 2 + 4) return o;
+    } else if (o.kind === "water") {
+      if (o.variant === "river") {
+        for (let k = 1; k < o.points.length; k++) {
+          if (distToSegment(p, o.points[k - 1], o.points[k]) < 14) return o;
+        }
+      } else {
+        if (pointInPoly(p, o.points)) return o;
+      }
     }
   }
   return null;
@@ -383,7 +440,6 @@ function draw(
   mouseScreen: Vec2 | null,
   waterPoints: Vec2[],
 ) {
-  // background = grass
   ctx.fillStyle = "#9bbf8a";
   ctx.fillRect(0, 0, w, h);
 
@@ -391,7 +447,6 @@ function draw(
   ctx.translate(game.camera.x, game.camera.y);
   ctx.scale(game.camera.zoom, game.camera.zoom);
 
-  // grid
   const grid = 40;
   const startX = Math.floor(-game.camera.x / game.camera.zoom / grid) * grid;
   const startY = Math.floor(-game.camera.y / game.camera.zoom / grid) * grid;
@@ -410,24 +465,27 @@ function draw(
   }
   ctx.stroke();
 
-  // draw water first (under), then roads, then buildings, then nature, then signs
   const water = game.city.objects.filter((o) => o.kind === "water") as WaterObj[];
   const roads = game.city.objects.filter((o) => o.kind === "road") as RoadSegment[];
   const buildings = game.city.objects.filter((o) => o.kind === "building") as Building[];
   const nature = game.city.objects.filter((o) => o.kind === "nature") as NatureObj[];
   const signs = game.city.objects.filter((o) => o.kind === "sign") as SignObj[];
+  const decals = game.city.objects.filter((o) => o.kind === "roadDecal") as RoadDecal[];
 
-  water.forEach((w) => drawWater(ctx, w));
-  roads.forEach((r) => drawRoad(ctx, r, r.id === game.selectedId));
+  drawWaterMerged(ctx, water, game.selectedId);
+  drawRoadsMerged(ctx, roads, game.selectedId);
+  decals.forEach((d) => {
+    const road = roads.find((r) => r.id === d.roadId);
+    if (road) drawDecal(ctx, d, road, d.id === game.selectedId);
+  });
   buildings.forEach((b) => drawBuilding(ctx, b, b.id === game.selectedId));
   nature.forEach((n) => drawNature(ctx, n, n.id === game.selectedId));
   signs.forEach((s) => drawSign(ctx, s, s.id === game.selectedId));
 
-  // preview road
   if (roadStart && mouseScreen) {
     const end = screenToWorld(mouseScreen.x, mouseScreen.y, game.camera);
     const snapped = snapRoadEndpoint(end, roads);
-    ctx.strokeStyle = "rgba(255,255,255,0.6)";
+    ctx.strokeStyle = "rgba(255,255,255,0.5)";
     ctx.lineWidth = 26;
     ctx.lineCap = "round";
     ctx.beginPath();
@@ -436,7 +494,6 @@ function draw(
     ctx.stroke();
   }
 
-  // preview river points
   if (waterPoints.length > 0) {
     ctx.strokeStyle = "rgba(120,180,220,0.6)";
     ctx.lineWidth = 18;
@@ -453,8 +510,6 @@ function draw(
 
   ctx.restore();
 
-  // weather overlay (rain/snow) is rendered via DOM in WeatherOverlay
-  // day/night tint
   const t = game.city.timeOfDay;
   let tint = "rgba(0,0,0,0)";
   if (t < 6 || t > 20) tint = "rgba(20,30,70,0.55)";
@@ -465,103 +520,193 @@ function draw(
   ctx.fillRect(0, 0, w, h);
 }
 
-function drawRoad(ctx: CanvasRenderingContext2D, r: RoadSegment, selected: boolean) {
-  const angle = Math.atan2(r.b.y - r.a.y, r.b.x - r.a.x);
-  // sidewalks
-  if (r.sidewalks) {
-    ctx.strokeStyle = "#d8d2c5";
-    ctx.lineWidth = r.width + 10;
-    ctx.lineCap = "round";
-    ctx.beginPath();
-    ctx.moveTo(r.a.x, r.a.y);
-    ctx.lineTo(r.b.x, r.b.y);
-    ctx.stroke();
-  }
-  // road
-  ctx.strokeStyle = "#3d3d42";
-  ctx.lineWidth = r.width;
+function drawWaterMerged(
+  ctx: CanvasRenderingContext2D,
+  water: WaterObj[],
+  selectedId: string | null,
+) {
+  if (water.length === 0) return;
+  // Single fill path so overlaps merge seamlessly into one shape.
+  ctx.fillStyle = WATER_COLOR;
+  ctx.strokeStyle = WATER_COLOR;
   ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+
+  // Polygons (ponds/lakes)
   ctx.beginPath();
-  ctx.moveTo(r.a.x, r.a.y);
-  ctx.lineTo(r.b.x, r.b.y);
+  water.forEach((wt) => {
+    if (wt.variant === "river") return;
+    wt.points.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+    ctx.closePath();
+  });
+  ctx.fill();
+
+  // Rivers — thick strokes in same color merge with polygons
+  ctx.lineWidth = 22;
+  ctx.beginPath();
+  water.forEach((wt) => {
+    if (wt.variant !== "river") return;
+    wt.points.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+  });
   ctx.stroke();
-  // center dashes
-  ctx.strokeStyle = "#f0d050";
+
+  // Subtle highlight ripples (per shape)
+  ctx.strokeStyle = "rgba(255,255,255,0.25)";
   ctx.lineWidth = 1.5;
-  ctx.setLineDash([8, 8]);
-  ctx.beginPath();
-  ctx.moveTo(r.a.x, r.a.y);
-  ctx.lineTo(r.b.x, r.b.y);
-  ctx.stroke();
-  ctx.setLineDash([]);
-
-  if (r.parking) {
-    ctx.strokeStyle = "rgba(255,255,255,0.4)";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    const off = r.width / 2 + 4;
-    const nx = -Math.sin(angle) * off;
-    const ny = Math.cos(angle) * off;
-    ctx.moveTo(r.a.x + nx, r.a.y + ny);
-    ctx.lineTo(r.b.x + nx, r.b.y + ny);
-    ctx.stroke();
-  }
-
-  if (r.crosswalk) {
-    const cx = (r.a.x + r.b.x) / 2;
-    const cy = (r.a.y + r.b.y) / 2;
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.rotate(angle + Math.PI / 2);
-    ctx.fillStyle = "#fff";
-    for (let i = -2; i <= 2; i++) {
-      ctx.fillRect(i * 6 - 2, -r.width / 2, 4, r.width);
+  water.forEach((wt) => {
+    if (wt.variant === "river") {
+      ctx.beginPath();
+      wt.points.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+      ctx.stroke();
     }
-    ctx.restore();
-  }
+  });
 
-  if (r.trafficLight) {
-    drawTrafficLight(ctx, r.b.x, r.b.y);
-  }
-  if (r.stopSign) {
-    drawStopSign(ctx, r.b.x, r.b.y);
-  }
-
-  if (selected) {
+  // Selection outline (dashed) on top
+  const sel = water.find((w) => w.id === selectedId);
+  if (sel) {
     ctx.strokeStyle = "#fff";
     ctx.lineWidth = 2;
     ctx.setLineDash([4, 4]);
     ctx.beginPath();
+    if (sel.variant === "river") {
+      sel.points.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+    } else {
+      sel.points.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+      ctx.closePath();
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+}
+
+function drawRoadsMerged(
+  ctx: CanvasRenderingContext2D,
+  roads: RoadSegment[],
+  selectedId: string | null,
+) {
+  if (roads.length === 0) return;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+
+  // Sidewalks layer (one stroke, single color → seamless merge)
+  const withSidewalks = roads.filter((r) => r.sidewalks);
+  if (withSidewalks.length) {
+    ctx.strokeStyle = "#d8d2c5";
+    ctx.lineWidth = 36; // width + ~10
+    ctx.beginPath();
+    withSidewalks.forEach((r) => {
+      ctx.moveTo(r.a.x, r.a.y);
+      ctx.lineTo(r.b.x, r.b.y);
+    });
+    ctx.stroke();
+  }
+
+  // Tarmac layer
+  ctx.strokeStyle = "#3d3d42";
+  ctx.lineWidth = 26;
+  ctx.beginPath();
+  roads.forEach((r) => {
     ctx.moveTo(r.a.x, r.a.y);
     ctx.lineTo(r.b.x, r.b.y);
+  });
+  ctx.stroke();
+
+  // Per-segment dashed center line
+  ctx.strokeStyle = "#f0d050";
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([8, 8]);
+  roads.forEach((r) => {
+    ctx.beginPath();
+    ctx.moveTo(r.a.x, r.a.y);
+    ctx.lineTo(r.b.x, r.b.y);
+    ctx.stroke();
+  });
+  ctx.setLineDash([]);
+
+  // Parking marks (legacy boolean)
+  roads.forEach((r) => {
+    if (!r.parking) return;
+    const angle = Math.atan2(r.b.y - r.a.y, r.b.x - r.a.x);
+    ctx.strokeStyle = "rgba(255,255,255,0.4)";
+    ctx.lineWidth = 2;
+    const off = r.width / 2 + 4;
+    const nx = -Math.sin(angle) * off;
+    const ny = Math.cos(angle) * off;
+    ctx.beginPath();
+    ctx.moveTo(r.a.x + nx, r.a.y + ny);
+    ctx.lineTo(r.b.x + nx, r.b.y + ny);
+    ctx.stroke();
+  });
+
+  const sel = roads.find((r) => r.id === selectedId);
+  if (sel) {
+    ctx.strokeStyle = "#fff";
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(sel.a.x, sel.a.y);
+    ctx.lineTo(sel.b.x, sel.b.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+}
+
+function drawDecal(
+  ctx: CanvasRenderingContext2D,
+  d: RoadDecal,
+  road: RoadSegment,
+  selected: boolean,
+) {
+  const c = pointAt(road, d.t);
+  const angle = Math.atan2(road.b.y - road.a.y, road.b.x - road.a.x);
+  if (d.variant === "crosswalk") {
+    ctx.save();
+    ctx.translate(c.x, c.y);
+    ctx.rotate(angle + Math.PI / 2);
+    ctx.fillStyle = "#fff";
+    for (let i = -2; i <= 2; i++) {
+      ctx.fillRect(i * 6 - 2, -road.width / 2, 4, road.width);
+    }
+    ctx.restore();
+  } else if (d.variant === "trafficLight") {
+    drawTrafficLight(ctx, c.x, c.y);
+  } else if (d.variant === "stopSign") {
+    drawStopSign(ctx, c.x, c.y);
+  }
+  if (selected) {
+    ctx.strokeStyle = "#fff";
+    ctx.lineWidth = 2;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, 14, 0, Math.PI * 2);
     ctx.stroke();
     ctx.setLineDash([]);
   }
 }
 
 function drawTrafficLight(ctx: CanvasRenderingContext2D, x: number, y: number) {
-  ctx.fillStyle = "#222";
-  ctx.fillRect(x - 4, y - 12, 8, 24);
-  ctx.fillStyle = "#ff4040";
-  ctx.beginPath();
-  ctx.arc(x, y - 6, 2.2, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = "#fcd34d";
-  ctx.beginPath();
-  ctx.arc(x, y, 2.2, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = "#22c55e";
-  ctx.beginPath();
-  ctx.arc(x, y + 6, 2.2, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.fillStyle = "#1a1a1a";
+  ctx.fillRect(x - 5, y - 14, 10, 28);
+  ctx.strokeStyle = "#000";
+  ctx.lineWidth = 0.5;
+  ctx.strokeRect(x - 5, y - 14, 10, 28);
+  const colors = ["#ff4040", "#fcd34d", "#22c55e"];
+  colors.forEach((cl, i) => {
+    ctx.fillStyle = cl;
+    ctx.beginPath();
+    ctx.arc(x, y - 8 + i * 8, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+  });
 }
 
 function drawStopSign(ctx: CanvasRenderingContext2D, x: number, y: number) {
   ctx.fillStyle = "#dc2626";
+  ctx.strokeStyle = "#fff";
+  ctx.lineWidth = 1;
   ctx.beginPath();
-  const r = 7;
+  const r = 9;
   for (let i = 0; i < 8; i++) {
-    const a = (Math.PI / 8) + (i * Math.PI) / 4;
+    const a = Math.PI / 8 + (i * Math.PI) / 4;
     const px = x + Math.cos(a) * r;
     const py = y + Math.sin(a) * r;
     if (i === 0) ctx.moveTo(px, py);
@@ -569,6 +714,7 @@ function drawStopSign(ctx: CanvasRenderingContext2D, x: number, y: number) {
   }
   ctx.closePath();
   ctx.fill();
+  ctx.stroke();
   ctx.fillStyle = "#fff";
   ctx.font = "bold 5px sans-serif";
   ctx.textAlign = "center";
@@ -576,74 +722,184 @@ function drawStopSign(ctx: CanvasRenderingContext2D, x: number, y: number) {
   ctx.fillText("STOP", x, y);
 }
 
+function shade(hex: string, amt: number) {
+  // amt in [-1,1]; negative = darker
+  const c = hex.replace("#", "");
+  const r = parseInt(c.substring(0, 2), 16);
+  const g = parseInt(c.substring(2, 4), 16);
+  const b = parseInt(c.substring(4, 6), 16);
+  const adj = (v: number) =>
+    Math.max(0, Math.min(255, Math.round(amt < 0 ? v * (1 + amt) : v + (255 - v) * amt)));
+  return `rgb(${adj(r)},${adj(g)},${adj(b)})`;
+}
+
 function drawBuilding(ctx: CanvasRenderingContext2D, b: Building, selected: boolean) {
   ctx.save();
   ctx.translate(b.pos.x, b.pos.y);
   ctx.rotate(b.rotation);
-  // shadow
-  ctx.fillStyle = "rgba(0,0,0,0.25)";
-  ctx.fillRect(-b.size.x / 2 + 4, -b.size.y / 2 + 4, b.size.x, b.size.y);
-  // body
-  ctx.fillStyle = BUILDING_COLORS[b.variant];
-  ctx.fillRect(-b.size.x / 2, -b.size.y / 2, b.size.x, b.size.y);
-  // roof outline
-  ctx.strokeStyle = "rgba(0,0,0,0.4)";
-  ctx.lineWidth = 2;
-  ctx.strokeRect(-b.size.x / 2, -b.size.y / 2, b.size.x, b.size.y);
-  // inner detail
-  ctx.strokeStyle = "rgba(255,255,255,0.25)";
-  ctx.lineWidth = 1;
+
+  const w = b.size.x;
+  const h = b.size.y;
+  const wallBase = b.color ?? BUILDING_COLORS[b.variant];
+  const roof = ROOF_COLORS[b.variant];
+
+  // ground shadow (soft)
+  ctx.fillStyle = "rgba(0,0,0,0.28)";
   ctx.beginPath();
-  ctx.moveTo(-b.size.x / 2, 0);
-  ctx.lineTo(b.size.x / 2, 0);
+  ctx.ellipse(6, 8, w / 1.8, h / 1.8, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // walls with light gradient
+  const grad = ctx.createLinearGradient(-w / 2, -h / 2, w / 2, h / 2);
+  grad.addColorStop(0, shade(wallBase, 0.12));
+  grad.addColorStop(1, shade(wallBase, -0.15));
+  ctx.fillStyle = grad;
+  ctx.fillRect(-w / 2, -h / 2, w, h);
+
+  // roof
+  const roofInset = Math.min(w, h) * 0.06;
+  ctx.fillStyle = roof;
+  ctx.fillRect(-w / 2 + roofInset, -h / 2 + roofInset, w - roofInset * 2, h - roofInset * 2);
+  // roof highlight ridge
+  ctx.strokeStyle = shade(roof, 0.25);
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(-w / 2 + roofInset, 0);
+  ctx.lineTo(w / 2 - roofInset, 0);
   ctx.stroke();
-  // label
-  ctx.fillStyle = "rgba(0,0,0,0.6)";
-  ctx.font = "10px sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(b.variant.replace("-", " "), 0, 0);
+
+  // variant-specific details
+  ctx.fillStyle = "rgba(180,210,240,0.85)"; // window glass
+  const drawWindow = (x: number, y: number, ww: number, hh: number) => {
+    ctx.fillRect(x - ww / 2, y - hh / 2, ww, hh);
+    ctx.strokeStyle = "rgba(0,0,0,0.45)";
+    ctx.lineWidth = 0.7;
+    ctx.strokeRect(x - ww / 2, y - hh / 2, ww, hh);
+  };
+
+  if (b.variant === "apartment") {
+    const cols = 4;
+    const rows = 6;
+    const padX = w * 0.16;
+    const padY = h * 0.12;
+    const gx = (w - padX * 2) / (cols - 1);
+    const gy = (h - padY * 2) / (rows - 1);
+    ctx.fillStyle = "rgba(180,210,240,0.85)";
+    for (let r = 0; r < rows; r++) {
+      for (let cI = 0; cI < cols; cI++) {
+        drawWindow(-w / 2 + padX + cI * gx, -h / 2 + padY + r * gy, 9, 10);
+      }
+    }
+  } else if (b.variant === "house") {
+    drawWindow(-w / 4, -h / 4, 14, 12);
+    drawWindow(w / 4, -h / 4, 14, 12);
+    // door
+    ctx.fillStyle = shade(roof, -0.2);
+    ctx.fillRect(-6, h / 4 - 4, 12, 18);
+    ctx.fillStyle = "#fcd34d";
+    ctx.fillRect(3, h / 4 + 5, 1.5, 1.5);
+  } else if (b.variant === "town-hall") {
+    // columns
+    ctx.fillStyle = "#f1ebd9";
+    for (let i = -2; i <= 2; i++) {
+      ctx.fillRect(i * 28 - 4, -h / 2 + 12, 8, h - 24);
+    }
+    // grand door
+    ctx.fillStyle = shade(roof, -0.3);
+    ctx.fillRect(-12, h / 4, 24, h / 4 - 6);
+  } else if (b.variant === "town-office" || b.variant === "library") {
+    const cols = 5;
+    const padX = w * 0.12;
+    const gx = (w - padX * 2) / (cols - 1);
+    for (let r = -1; r <= 1; r++) {
+      for (let cI = 0; cI < cols; cI++) {
+        drawWindow(-w / 2 + padX + cI * gx, r * (h * 0.28), 12, 9);
+      }
+    }
+    if (b.variant === "library") {
+      ctx.fillStyle = "#f1ebd9";
+      for (let i = -1; i <= 1; i++) {
+        ctx.fillRect(i * 30 - 3, h / 2 - 14, 6, 14);
+      }
+    }
+  } else if (b.variant === "store") {
+    // awning stripes
+    ctx.fillStyle = "#dc2626";
+    ctx.fillRect(-w / 2 + 6, -h / 2 + 6, w - 12, 10);
+    ctx.fillStyle = "#fff";
+    for (let i = 0; i < 6; i++) {
+      ctx.fillRect(-w / 2 + 6 + i * ((w - 12) / 6), -h / 2 + 6, (w - 12) / 12, 10);
+    }
+    // window front
+    drawWindow(0, h / 6, w * 0.6, h * 0.35);
+    ctx.fillStyle = shade(roof, -0.2);
+    ctx.fillRect(-8, h / 2 - 16, 16, 14);
+  } else if (b.variant === "restaurant") {
+    // patio dots / tables
+    ctx.fillStyle = "#a36b3c";
+    [
+      [-w / 3, h / 3],
+      [0, h / 3],
+      [w / 3, h / 3],
+    ].forEach(([x, y]) => {
+      ctx.beginPath();
+      ctx.arc(x, y, 4, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    drawWindow(-w / 4, -h / 5, 18, 12);
+    drawWindow(w / 4, -h / 5, 18, 12);
+    // chimney
+    ctx.fillStyle = shade(roof, -0.2);
+    ctx.fillRect(w / 3, -h / 2 - 4, 8, 10);
+  }
 
   if (selected) {
     ctx.strokeStyle = "#fff";
     ctx.lineWidth = 2;
     ctx.setLineDash([4, 4]);
-    ctx.strokeRect(-b.size.x / 2 - 4, -b.size.y / 2 - 4, b.size.x + 8, b.size.y + 8);
+    ctx.strokeRect(-w / 2 - 4, -h / 2 - 4, w + 8, h + 8);
     ctx.setLineDash([]);
   }
   ctx.restore();
 }
 
 function drawNature(ctx: CanvasRenderingContext2D, n: NatureObj, selected: boolean) {
+  const color = n.color ?? NATURE_DEFAULT_COLORS[n.variant];
   if (n.variant === "grass") {
-    ctx.fillStyle = NATURE_COLORS.grass;
+    ctx.fillStyle = color;
     ctx.beginPath();
     ctx.arc(n.pos.x, n.pos.y, n.size, 0, Math.PI * 2);
     ctx.fill();
-    return;
-  }
-  if (n.variant === "tree") {
-    ctx.fillStyle = "rgba(0,0,0,0.25)";
+  } else if (n.variant === "tree") {
+    ctx.fillStyle = "rgba(0,0,0,0.28)";
     ctx.beginPath();
-    ctx.arc(n.pos.x + 3, n.pos.y + 3, n.size, 0, Math.PI * 2);
+    ctx.arc(n.pos.x + 4, n.pos.y + 4, n.size, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = NATURE_COLORS.tree;
+    ctx.fillStyle = shade(color, -0.15);
     ctx.beginPath();
     ctx.arc(n.pos.x, n.pos.y, n.size, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = "rgba(255,255,255,0.15)";
+    ctx.fillStyle = color;
     ctx.beginPath();
-    ctx.arc(n.pos.x - n.size * 0.3, n.pos.y - n.size * 0.3, n.size * 0.5, 0, Math.PI * 2);
+    ctx.arc(n.pos.x - n.size * 0.15, n.pos.y - n.size * 0.15, n.size * 0.8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = shade(color, 0.25);
+    ctx.beginPath();
+    ctx.arc(n.pos.x - n.size * 0.35, n.pos.y - n.size * 0.35, n.size * 0.4, 0, Math.PI * 2);
     ctx.fill();
   } else if (n.variant === "bush") {
-    ctx.fillStyle = NATURE_COLORS.bush;
+    ctx.fillStyle = shade(color, -0.1);
     ctx.beginPath();
     ctx.arc(n.pos.x - 6, n.pos.y, n.size, 0, Math.PI * 2);
     ctx.arc(n.pos.x + 6, n.pos.y, n.size, 0, Math.PI * 2);
     ctx.arc(n.pos.x, n.pos.y - 5, n.size, 0, Math.PI * 2);
     ctx.fill();
+    ctx.fillStyle = shade(color, 0.15);
+    ctx.beginPath();
+    ctx.arc(n.pos.x - 2, n.pos.y - 7, n.size * 0.5, 0, Math.PI * 2);
+    ctx.fill();
   } else if (n.variant === "flower") {
-    ctx.fillStyle = NATURE_COLORS.flower;
+    ctx.fillStyle = color;
     for (let i = 0; i < 5; i++) {
       const a = (i / 5) * Math.PI * 2;
       ctx.beginPath();
@@ -666,41 +922,11 @@ function drawNature(ctx: CanvasRenderingContext2D, n: NatureObj, selected: boole
   }
 }
 
-function drawWater(ctx: CanvasRenderingContext2D, w: WaterObj) {
-  if (w.variant === "river") {
-    ctx.strokeStyle = "#6aa3c9";
-    ctx.lineWidth = 22;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    ctx.beginPath();
-    w.points.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
-    ctx.stroke();
-    ctx.strokeStyle = "rgba(255,255,255,0.3)";
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    w.points.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
-    ctx.stroke();
-    return;
-  }
-  ctx.fillStyle = "#6aa3c9";
-  ctx.beginPath();
-  w.points.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
-  ctx.closePath();
-  ctx.fill();
-  ctx.strokeStyle = "rgba(255,255,255,0.4)";
-  ctx.lineWidth = 2;
-  ctx.stroke();
-}
-
 function drawSign(ctx: CanvasRenderingContext2D, s: SignObj, selected: boolean) {
   ctx.save();
   ctx.translate(s.pos.x, s.pos.y);
   ctx.rotate(s.rotation);
-  const colors = {
-    street: "#2563eb",
-    town: "#15803d",
-    highway: "#166534",
-  };
+  const colors = { street: "#2563eb", town: "#15803d", highway: "#166534" };
   ctx.fillStyle = colors[s.variant];
   const w = Math.max(60, s.text.length * 7);
   ctx.fillRect(-w / 2, -12, w, 24);
