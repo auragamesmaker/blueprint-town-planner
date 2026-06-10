@@ -1133,3 +1133,1053 @@ function drawSign(ctx: CanvasRenderingContext2D, s: SignObj, selected: boolean) 
   }
   ctx.restore();
 }
+// ──────────────── Prop renderer ────────────────
+
+function drawProp(
+  ctx: CanvasRenderingContext2D,
+  p: PropObj,
+  selected: boolean,
+  time: number,
+) {
+  const def = PROP_BY_ID.get(p.catalogId);
+  if (!def) return;
+  const color = p.color ?? def.color;
+  ctx.save();
+  ctx.translate(p.pos.x, p.pos.y);
+  ctx.rotate(p.rotation);
+  // soft ground shadow
+  ctx.fillStyle = "rgba(0,0,0,0.22)";
+  ctx.beginPath();
+  ctx.ellipse(2, 3, p.size * 0.8, p.size * 0.45, 0, 0, Math.PI * 2);
+  ctx.fill();
+  drawShape(ctx, def.shape, p.size, color, time);
+  if (selected) {
+    ctx.strokeStyle = "#fff";
+    ctx.lineWidth = 2;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.arc(0, 0, p.size + 6, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  ctx.restore();
+}
+
+function drawShape(
+  ctx: CanvasRenderingContext2D,
+  shape: PropShape,
+  s: number,
+  color: string,
+  time: number,
+) {
+  // helper: vehicle body
+  const carBody = (length: number, width: number, body: string, accent = "#1a1a1a") => {
+    ctx.fillStyle = body;
+    roundRect(ctx, -length / 2, -width / 2, length, width, width * 0.25);
+    ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,0.18)";
+    roundRect(ctx, -length / 2 + 2, -width / 2 + 1.5, length - 4, width * 0.22, 2);
+    ctx.fill();
+    // windshield
+    ctx.fillStyle = "rgba(120,170,210,0.85)";
+    roundRect(ctx, -length / 4, -width / 2 + 2, length / 5, width - 4, 2);
+    ctx.fill();
+    roundRect(ctx, length / 8, -width / 2 + 2, length / 5, width - 4, 2);
+    ctx.fill();
+    // wheels
+    ctx.fillStyle = accent;
+    ctx.fillRect(-length / 2 + 4, -width / 2 - 2, 6, 3);
+    ctx.fillRect(-length / 2 + 4, width / 2 - 1, 6, 3);
+    ctx.fillRect(length / 2 - 10, -width / 2 - 2, 6, 3);
+    ctx.fillRect(length / 2 - 10, width / 2 - 1, 6, 3);
+  };
+
+  switch (shape) {
+    case "sedan":
+    case "taxi":
+    case "policeCar":
+    case "sportsCar":
+    case "ambulance": {
+      const len = s * 1.8, wid = s * 0.9;
+      carBody(len, wid, color);
+      if (shape === "taxi") {
+        ctx.fillStyle = "#222";
+        ctx.fillRect(-len / 2 + 4, -1, len - 8, 2);
+      }
+      if (shape === "policeCar") {
+        ctx.fillStyle = "#3a85ff";
+        ctx.fillRect(-3, -wid / 2 - 1, 3, wid + 2);
+        ctx.fillStyle = "#ff3a3a";
+        ctx.fillRect(0, -wid / 2 - 1, 3, wid + 2);
+      }
+      if (shape === "ambulance") {
+        ctx.fillStyle = "#d22";
+        ctx.fillRect(-2, -3, 4, 6);
+        ctx.fillRect(-3, -1, 6, 2);
+      }
+      return;
+    }
+    case "suv":
+    case "pickup":
+    case "van": {
+      const len = s * 1.7, wid = s * 1.0;
+      carBody(len, wid, color);
+      if (shape === "pickup") {
+        ctx.fillStyle = "rgba(0,0,0,0.25)";
+        ctx.fillRect(0, -wid / 2 + 2, len / 2 - 4, wid - 4);
+      }
+      return;
+    }
+    case "fireTruck": {
+      const len = s * 2.2, wid = s * 1.0;
+      ctx.fillStyle = color;
+      roundRect(ctx, -len / 2, -wid / 2, len, wid, 3);
+      ctx.fill();
+      ctx.fillStyle = "#222";
+      ctx.fillRect(len / 2 - 8, -wid / 2 + 2, 6, wid - 4);
+      ctx.fillStyle = "#ffd84a";
+      ctx.fillRect(-len / 2, -1, len, 2);
+      return;
+    }
+    case "bus":
+    case "schoolBus": {
+      const len = s * 2.3, wid = s * 0.85;
+      ctx.fillStyle = color;
+      roundRect(ctx, -len / 2, -wid / 2, len, wid, 4);
+      ctx.fill();
+      // windows row
+      ctx.fillStyle = "rgba(120,180,220,0.85)";
+      for (let i = 0; i < 6; i++) {
+        ctx.fillRect(-len / 2 + 6 + i * ((len - 12) / 6), -wid / 2 + 2, (len - 12) / 6 - 2, wid * 0.35);
+      }
+      if (shape === "schoolBus") {
+        ctx.fillStyle = "#222";
+        ctx.fillRect(-len / 2, wid / 2 - 2, len, 1);
+      }
+      return;
+    }
+    case "boxTruck":
+    case "trailer":
+    case "tanker": {
+      const len = s * 2.0, wid = s * 0.95;
+      ctx.fillStyle = "#2a2a2a";
+      roundRect(ctx, -len / 2, -wid / 2 - 1, len * 0.25, wid + 2, 2);
+      ctx.fill();
+      ctx.fillStyle = color;
+      if (shape === "tanker") {
+        ctx.beginPath();
+        ctx.ellipse(len / 8, 0, len * 0.4, wid * 0.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        roundRect(ctx, -len / 4, -wid / 2, len * 0.75, wid, 2);
+        ctx.fill();
+      }
+      return;
+    }
+    case "pickup":
+    case "foodTruck": {
+      const len = s * 1.9, wid = s * 0.95;
+      ctx.fillStyle = color;
+      roundRect(ctx, -len / 2, -wid / 2, len, wid, 3);
+      ctx.fill();
+      ctx.fillStyle = "rgba(0,0,0,0.3)";
+      ctx.fillRect(-len / 2 + 4, -wid / 2 + 2, len / 3, wid * 0.4);
+      return;
+    }
+    case "tractor": {
+      ctx.fillStyle = color;
+      roundRect(ctx, -s, -s * 0.6, s * 1.4, s * 1.2, 3);
+      ctx.fill();
+      ctx.fillStyle = "#111";
+      ctx.beginPath(); ctx.arc(-s * 0.5, s * 0.5, s * 0.4, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(s * 0.4, s * 0.4, s * 0.55, 0, Math.PI * 2); ctx.fill();
+      return;
+    }
+    case "bike":
+    case "motorcycle":
+    case "scooter": {
+      ctx.strokeStyle = "#222";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(-s * 0.7, 0, s * 0.4, 0, Math.PI * 2);
+      ctx.moveTo(s * 0.3, 0); ctx.arc(s * 0.7, 0, s * 0.4, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = color;
+      roundRect(ctx, -s * 0.4, -s * 0.2, s * 0.8, s * 0.3, 2);
+      ctx.fill();
+      return;
+    }
+    case "boat":
+    case "rowboat":
+    case "swanBoat": {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(-s, 0); ctx.quadraticCurveTo(0, -s * 0.7, s, 0);
+      ctx.quadraticCurveTo(0, s * 0.7, -s, 0);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(0,0,0,0.4)"; ctx.lineWidth = 1; ctx.stroke();
+      if (shape === "swanBoat") {
+        ctx.fillStyle = "#f3a83a";
+        ctx.beginPath(); ctx.arc(s * 0.7, -s * 0.2, s * 0.18, 0, Math.PI * 2); ctx.fill();
+      }
+      return;
+    }
+    case "bench":
+    case "bench2": {
+      ctx.fillStyle = color;
+      roundRect(ctx, -s, -s * 0.3, s * 2, s * 0.6, 2);
+      ctx.fill();
+      ctx.fillStyle = "#222";
+      ctx.fillRect(-s * 0.9, s * 0.3, 3, 4);
+      ctx.fillRect(s * 0.6, s * 0.3, 3, 4);
+      return;
+    }
+    case "picnicTable": {
+      ctx.fillStyle = color;
+      roundRect(ctx, -s, -s * 0.6, s * 2, s * 1.2, 2);
+      ctx.fill();
+      ctx.fillStyle = "rgba(0,0,0,0.25)";
+      ctx.fillRect(-s, -s * 0.6, s * 2, 2);
+      ctx.fillRect(-s, s * 0.5, s * 2, 2);
+      return;
+    }
+    case "outdoorTable":
+    case "pingPongTable": {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      if (shape === "pingPongTable") ctx.rect(-s, -s * 0.6, s * 2, s * 1.2);
+      else ctx.arc(0, 0, s, 0, Math.PI * 2);
+      ctx.fill();
+      if (shape === "pingPongTable") {
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(-1, -s * 0.6, 1, s * 1.2);
+      }
+      return;
+    }
+    case "outdoorChair":
+    case "loungeChair": {
+      ctx.fillStyle = color;
+      roundRect(ctx, -s * 0.6, -s * 0.6, s * 1.2, s * 1.2, 2);
+      ctx.fill();
+      return;
+    }
+    case "streetLamp":
+    case "lampPost2":
+    case "lampPost3": {
+      ctx.fillStyle = color;
+      ctx.fillRect(-1, -s, 2, s * 2);
+      ctx.fillStyle = "#fcd76a";
+      ctx.beginPath();
+      ctx.arc(0, -s, 4, 0, Math.PI * 2);
+      ctx.fill();
+      if (shape === "lampPost2") {
+        ctx.beginPath();
+        ctx.arc(-6, -s + 3, 3, 0, Math.PI * 2);
+        ctx.arc(6, -s + 3, 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.fillStyle = "rgba(252,215,106,0.25)";
+      ctx.beginPath();
+      ctx.arc(0, -s, 12, 0, Math.PI * 2);
+      ctx.fill();
+      return;
+    }
+    case "gardenLight": {
+      ctx.fillStyle = color;
+      ctx.fillRect(-1, -s * 0.6, 2, s * 1.2);
+      ctx.fillStyle = "#fff7c0";
+      ctx.beginPath(); ctx.arc(0, -s * 0.6, 2.5, 0, Math.PI * 2); ctx.fill();
+      return;
+    }
+    case "floodLight": {
+      ctx.fillStyle = color;
+      roundRect(ctx, -s * 0.5, -s * 0.4, s, s * 0.8, 2);
+      ctx.fill();
+      ctx.fillStyle = "rgba(255,250,200,0.4)";
+      ctx.beginPath();
+      ctx.moveTo(s * 0.5, -s * 0.4);
+      ctx.lineTo(s * 1.8, -s);
+      ctx.lineTo(s * 1.8, s);
+      ctx.lineTo(s * 0.5, s * 0.4);
+      ctx.closePath();
+      ctx.fill();
+      return;
+    }
+    case "neonSign":
+    case "billboard": {
+      ctx.fillStyle = color;
+      roundRect(ctx, -s, -s * 0.6, s * 2, s * 1.2, 3);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.6)";
+      ctx.strokeRect(-s + 3, -s * 0.6 + 3, s * 2 - 6, s * 1.2 - 6);
+      return;
+    }
+    case "trafficCone": {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(0, -s);
+      ctx.lineTo(s * 0.6, s * 0.5);
+      ctx.lineTo(-s * 0.6, s * 0.5);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(-s * 0.5, -s * 0.2, s, 2);
+      return;
+    }
+    case "trashCan":
+    case "recycleBin": {
+      ctx.fillStyle = color;
+      roundRect(ctx, -s * 0.5, -s * 0.6, s, s * 1.2, 2);
+      ctx.fill();
+      ctx.fillStyle = "rgba(0,0,0,0.4)";
+      ctx.fillRect(-s * 0.5, -s * 0.6, s, 2);
+      if (shape === "recycleBin") {
+        ctx.fillStyle = "#fff";
+        ctx.font = "bold 6px sans-serif"; ctx.textAlign = "center";
+        ctx.fillText("♻", 0, 1);
+      }
+      return;
+    }
+    case "dumpster": {
+      ctx.fillStyle = color;
+      roundRect(ctx, -s, -s * 0.6, s * 2, s * 1.2, 2);
+      ctx.fill();
+      ctx.fillStyle = "rgba(0,0,0,0.3)";
+      ctx.fillRect(-s, -s * 0.6, s * 2, 3);
+      return;
+    }
+    case "mailbox": {
+      ctx.fillStyle = color;
+      roundRect(ctx, -s * 0.7, -s * 0.5, s * 1.4, s, s * 0.5);
+      ctx.fill();
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(-s * 0.2, -s * 0.1, s * 0.4, 2);
+      return;
+    }
+    case "hydrant": {
+      ctx.fillStyle = color;
+      roundRect(ctx, -s * 0.6, -s * 0.5, s * 1.2, s, 3);
+      ctx.fill();
+      ctx.fillStyle = "rgba(255,255,255,0.6)";
+      ctx.fillRect(-s * 0.6, -s * 0.1, s * 1.2, 2);
+      return;
+    }
+    case "phoneBooth":
+    case "atm":
+    case "vendingMachine": {
+      ctx.fillStyle = color;
+      roundRect(ctx, -s * 0.6, -s, s * 1.2, s * 2, 2);
+      ctx.fill();
+      ctx.fillStyle = "rgba(180,210,240,0.7)";
+      ctx.fillRect(-s * 0.5, -s * 0.9, s, s * 1.2);
+      return;
+    }
+    case "kiosk":
+    case "busStop":
+    case "foodTruck": {
+      ctx.fillStyle = color;
+      roundRect(ctx, -s, -s * 0.7, s * 2, s * 1.4, 3);
+      ctx.fill();
+      ctx.fillStyle = "rgba(180,210,240,0.7)";
+      ctx.fillRect(-s * 0.9, -s * 0.6, s * 1.8, s * 0.5);
+      return;
+    }
+    case "bikeRack": {
+      ctx.strokeStyle = color; ctx.lineWidth = 2;
+      ctx.beginPath();
+      for (let i = -2; i <= 2; i++) {
+        ctx.moveTo(i * 4, -s * 0.5); ctx.lineTo(i * 4, s * 0.5);
+      }
+      ctx.stroke();
+      return;
+    }
+    case "parkingMeter": {
+      ctx.fillStyle = color;
+      ctx.fillRect(-1, -s, 2, s * 2);
+      ctx.fillStyle = "#bbb";
+      ctx.beginPath(); ctx.arc(0, -s, 4, 0, Math.PI * 2); ctx.fill();
+      return;
+    }
+    case "fountain":
+    case "fountainSm": {
+      // base pool
+      ctx.fillStyle = "#3e7fa3";
+      ctx.beginPath(); ctx.arc(0, 0, s, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#cfe6f1";
+      ctx.beginPath(); ctx.arc(0, 0, s * 0.85, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#9a948a";
+      ctx.beginPath(); ctx.arc(0, 0, s * 0.3, 0, Math.PI * 2); ctx.fill();
+      // animated spray dots
+      for (let i = 0; i < 6; i++) {
+        const a = i / 6 * Math.PI * 2 + time;
+        const r = s * (0.3 + (Math.sin(time * 3 + i) * 0.5 + 0.5) * 0.4);
+        ctx.fillStyle = "rgba(255,255,255,0.7)";
+        ctx.beginPath();
+        ctx.arc(Math.cos(a) * r, Math.sin(a) * r, 1.6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      return;
+    }
+    case "statue": {
+      ctx.fillStyle = "#9a948a";
+      ctx.beginPath(); ctx.arc(0, 0, s * 0.6, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = color;
+      ctx.beginPath(); ctx.arc(0, -s * 0.2, s * 0.4, 0, Math.PI * 2); ctx.fill();
+      ctx.fillRect(-s * 0.15, -s * 0.5, s * 0.3, s * 0.4);
+      return;
+    }
+    case "gazebo":
+    case "pergola":
+    case "bandstand":
+    case "tent": {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(0, -s);
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2 - Math.PI / 2;
+        ctx.lineTo(Math.cos(a) * s, Math.sin(a) * s);
+      }
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = "rgba(0,0,0,0.3)";
+      ctx.stroke();
+      return;
+    }
+    case "umbrella": {
+      ctx.fillStyle = color;
+      ctx.beginPath(); ctx.arc(0, 0, s, 0, Math.PI, true); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "rgba(0,0,0,0.3)";
+      ctx.fillRect(-0.5, 0, 1, s * 0.6);
+      ctx.strokeStyle = "rgba(0,0,0,0.4)";
+      for (let i = 1; i < 4; i++) {
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        const a = -Math.PI * (i / 4);
+        ctx.lineTo(Math.cos(a) * s, Math.sin(a) * s);
+        ctx.stroke();
+      }
+      return;
+    }
+    case "swingSet":
+    case "monkeyBars": {
+      ctx.strokeStyle = color; ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(-s, s * 0.6); ctx.lineTo(0, -s); ctx.lineTo(s, s * 0.6);
+      ctx.moveTo(-s * 0.5, s * 0.6); ctx.lineTo(0, -s * 0.6); ctx.lineTo(s * 0.5, s * 0.6);
+      ctx.stroke();
+      ctx.fillStyle = "#3a3a3a";
+      ctx.fillRect(-s * 0.3, 0, s * 0.6, 2);
+      return;
+    }
+    case "slide": {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(-s, s); ctx.lineTo(0, -s); ctx.lineTo(s * 0.5, -s); ctx.lineTo(-s * 0.5, s);
+      ctx.closePath(); ctx.fill();
+      return;
+    }
+    case "seesaw": {
+      ctx.fillStyle = color;
+      ctx.fillRect(-s, -2, s * 2, 4);
+      ctx.fillStyle = "#222";
+      ctx.beginPath(); ctx.arc(0, 0, 3, 0, Math.PI * 2); ctx.fill();
+      return;
+    }
+    case "sandbox": {
+      ctx.fillStyle = color;
+      roundRect(ctx, -s, -s, s * 2, s * 2, 2);
+      ctx.fill();
+      ctx.fillStyle = "#a07a4a";
+      ctx.fillRect(-s, -s, s * 2, 3);
+      ctx.fillRect(-s, s - 3, s * 2, 3);
+      ctx.fillRect(-s, -s, 3, s * 2);
+      ctx.fillRect(s - 3, -s, 3, s * 2);
+      return;
+    }
+    case "merryGoRound": {
+      ctx.fillStyle = color;
+      ctx.beginPath(); ctx.arc(0, 0, s, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "rgba(0,0,0,0.4)";
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * Math.PI * 2 + time;
+        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * s, Math.sin(a) * s); ctx.stroke();
+      }
+      return;
+    }
+    case "basketballHoop": {
+      ctx.fillStyle = color;
+      ctx.fillRect(-s * 0.6, -s * 0.2, s * 1.2, 3);
+      ctx.fillStyle = "#e85a2a";
+      ctx.beginPath(); ctx.arc(0, 0, s * 0.4, 0, Math.PI * 2); ctx.fill();
+      return;
+    }
+    case "soccerGoal":
+    case "footballGoal": {
+      ctx.strokeStyle = color; ctx.lineWidth = 2;
+      ctx.strokeRect(-s, -s * 0.4, s * 2, s * 0.8);
+      ctx.fillStyle = "rgba(255,255,255,0.2)";
+      ctx.fillRect(-s, -s * 0.4, s * 2, s * 0.8);
+      return;
+    }
+    case "tennisNet": {
+      ctx.fillStyle = color;
+      ctx.fillRect(-s, -2, s * 2, 4);
+      ctx.strokeStyle = "rgba(0,0,0,0.4)";
+      for (let i = -4; i <= 4; i++) {
+        ctx.beginPath(); ctx.moveTo(i * (s / 5), -2); ctx.lineTo(i * (s / 5), 2); ctx.stroke();
+      }
+      return;
+    }
+    case "baseballBase": {
+      ctx.fillStyle = color;
+      ctx.fillRect(-s * 0.5, -s * 0.5, s, s);
+      ctx.strokeStyle = "#222"; ctx.strokeRect(-s * 0.5, -s * 0.5, s, s);
+      return;
+    }
+    case "skateRamp": {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(-s, s * 0.4); ctx.quadraticCurveTo(-s, -s * 0.6, 0, -s * 0.6);
+      ctx.quadraticCurveTo(s, -s * 0.6, s, s * 0.4); ctx.closePath(); ctx.fill();
+      return;
+    }
+    case "rock":
+    case "boulder": {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      const sides = 7;
+      for (let i = 0; i < sides; i++) {
+        const a = (i / sides) * Math.PI * 2;
+        const r = s * (0.7 + ((Math.sin(i * 9.31) + 1) / 2) * 0.4);
+        const x = Math.cos(a) * r, y = Math.sin(a) * r;
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "rgba(255,255,255,0.18)";
+      ctx.beginPath(); ctx.arc(-s * 0.3, -s * 0.3, s * 0.35, 0, Math.PI * 2); ctx.fill();
+      return;
+    }
+    case "log": {
+      ctx.fillStyle = color;
+      roundRect(ctx, -s, -s * 0.3, s * 2, s * 0.6, s * 0.3);
+      ctx.fill();
+      ctx.fillStyle = shade(color, -0.2);
+      ctx.beginPath(); ctx.arc(-s, 0, s * 0.3, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(s, 0, s * 0.3, 0, Math.PI * 2); ctx.fill();
+      return;
+    }
+    case "stump": {
+      ctx.fillStyle = color;
+      ctx.beginPath(); ctx.arc(0, 0, s, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "rgba(0,0,0,0.4)";
+      for (let i = 1; i < 4; i++) {
+        ctx.beginPath(); ctx.arc(0, 0, (s / 4) * i, 0, Math.PI * 2); ctx.stroke();
+      }
+      return;
+    }
+    case "pebbles": {
+      ctx.fillStyle = color;
+      for (let i = 0; i < 7; i++) {
+        const a = i * 1.7, r = s * 0.6;
+        ctx.beginPath();
+        ctx.arc(Math.cos(a) * r, Math.sin(a) * r, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      return;
+    }
+    case "pineTree":
+    case "spruceTree":
+    case "christmasTree": {
+      // shadow base
+      ctx.fillStyle = "rgba(0,0,0,0.25)";
+      ctx.beginPath(); ctx.ellipse(3, 3, s, s * 0.6, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = shade(color, -0.15);
+      for (let i = 2; i >= 0; i--) {
+        ctx.beginPath();
+        ctx.moveTo(0, -s + i * s * 0.4);
+        ctx.lineTo(s * (0.5 + i * 0.2), -s * 0.2 + i * s * 0.4);
+        ctx.lineTo(-s * (0.5 + i * 0.2), -s * 0.2 + i * s * 0.4);
+        ctx.closePath(); ctx.fill();
+      }
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(0, 0, s * 0.8, 0, Math.PI * 2); ctx.fill();
+      if (shape === "christmasTree") {
+        ctx.fillStyle = "#ff3a3a"; ctx.beginPath(); ctx.arc(-s * 0.3, -s * 0.2, 2, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#fcd34d"; ctx.beginPath(); ctx.arc(s * 0.3, 0, 2, 0, Math.PI * 2); ctx.fill();
+      }
+      return;
+    }
+    case "oakTree":
+    case "appleTree":
+    case "willowTree":
+    case "mapleTree":
+    case "cherryTree":
+    case "birchTree":
+    case "topiary": {
+      ctx.fillStyle = "rgba(0,0,0,0.28)";
+      ctx.beginPath(); ctx.arc(4, 4, s, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = shade(color, -0.18);
+      ctx.beginPath(); ctx.arc(0, 0, s, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = color;
+      ctx.beginPath(); ctx.arc(-s * 0.2, -s * 0.2, s * 0.8, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = shade(color, 0.25);
+      ctx.beginPath(); ctx.arc(-s * 0.4, -s * 0.4, s * 0.35, 0, Math.PI * 2); ctx.fill();
+      if (shape === "appleTree") {
+        ctx.fillStyle = "#e63a3a";
+        for (let i = 0; i < 5; i++) {
+          ctx.beginPath();
+          ctx.arc(Math.cos(i * 1.3) * s * 0.5, Math.sin(i * 1.3) * s * 0.5, 1.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      return;
+    }
+    case "palmTree": {
+      ctx.fillStyle = "#7a5a3a";
+      ctx.fillRect(-1.5, -s * 0.2, 3, s);
+      ctx.fillStyle = color;
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * Math.PI * 2;
+        ctx.save(); ctx.rotate(a);
+        ctx.beginPath();
+        ctx.ellipse(s * 0.5, 0, s * 0.55, s * 0.18, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+      return;
+    }
+    case "deadTree": {
+      ctx.strokeStyle = color; ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, s * 0.5);
+      ctx.lineTo(0, -s * 0.5);
+      ctx.moveTo(0, -s * 0.2); ctx.lineTo(-s * 0.6, -s * 0.8);
+      ctx.moveTo(0, -s * 0.2); ctx.lineTo(s * 0.6, -s * 0.7);
+      ctx.moveTo(0, 0); ctx.lineTo(s * 0.4, -s * 0.3);
+      ctx.stroke();
+      return;
+    }
+    case "hedge": {
+      ctx.fillStyle = color;
+      roundRect(ctx, -s, -s * 0.5, s * 2, s, s * 0.5);
+      ctx.fill();
+      ctx.fillStyle = shade(color, 0.15);
+      ctx.beginPath(); ctx.arc(-s * 0.5, -s * 0.2, s * 0.3, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(s * 0.5, -s * 0.2, s * 0.3, 0, Math.PI * 2); ctx.fill();
+      return;
+    }
+    case "rose":
+    case "tulip":
+    case "sunflower":
+    case "daisy":
+    case "lavender":
+    case "lily":
+    case "poppy":
+    case "iris":
+    case "violets":
+    case "marigold":
+    case "orchid":
+    case "dandelion":
+    case "hydrangea": {
+      ctx.fillStyle = color;
+      for (let i = 0; i < 5; i++) {
+        const a = (i / 5) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.arc(Math.cos(a) * s * 0.5, Math.sin(a) * s * 0.5, s * 0.4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.fillStyle = "#fcd76a";
+      ctx.beginPath(); ctx.arc(0, 0, s * 0.3, 0, Math.PI * 2); ctx.fill();
+      return;
+    }
+    case "cactus": {
+      ctx.fillStyle = color;
+      roundRect(ctx, -s * 0.3, -s, s * 0.6, s * 2, s * 0.3);
+      ctx.fill();
+      roundRect(ctx, -s * 0.8, -s * 0.2, s * 0.5, s * 0.8, s * 0.25);
+      ctx.fill();
+      return;
+    }
+    case "haystack": {
+      ctx.fillStyle = color;
+      ctx.beginPath(); ctx.arc(0, 0, s, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = shade(color, -0.25);
+      for (let i = -2; i <= 2; i++) {
+        ctx.beginPath();
+        ctx.arc(0, 0, s - i * 3, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      return;
+    }
+    case "scarecrow": {
+      ctx.fillStyle = "#7a5a3a";
+      ctx.fillRect(-1, -s, 2, s * 2);
+      ctx.fillRect(-s * 0.6, -s * 0.4, s * 1.2, 2);
+      ctx.fillStyle = color;
+      ctx.beginPath(); ctx.arc(0, -s, s * 0.35, 0, Math.PI * 2); ctx.fill();
+      return;
+    }
+    case "barrel": {
+      ctx.fillStyle = color;
+      roundRect(ctx, -s * 0.5, -s * 0.6, s, s * 1.2, 3);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(0,0,0,0.4)";
+      ctx.strokeRect(-s * 0.5, -s * 0.3, s, 1);
+      ctx.strokeRect(-s * 0.5, s * 0.2, s, 1);
+      return;
+    }
+    case "well": {
+      ctx.fillStyle = color;
+      ctx.beginPath(); ctx.arc(0, 0, s, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#1c2a3a";
+      ctx.beginPath(); ctx.arc(0, 0, s * 0.6, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "#7a5a3a"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(0, -s, s * 0.4, 0, Math.PI, true); ctx.stroke();
+      return;
+    }
+    case "windmill":
+    case "windTurbine": {
+      ctx.fillStyle = color;
+      ctx.fillRect(-2, -s * 0.5, 4, s * 1.5);
+      ctx.fillStyle = "#888";
+      ctx.beginPath(); ctx.arc(0, -s * 0.5, 2, 0, Math.PI * 2); ctx.fill();
+      ctx.save();
+      ctx.translate(0, -s * 0.5);
+      ctx.rotate(time * 1.2);
+      ctx.fillStyle = shade(color, -0.2);
+      for (let i = 0; i < 3; i++) {
+        ctx.save(); ctx.rotate((i / 3) * Math.PI * 2);
+        ctx.beginPath();
+        ctx.moveTo(0, 0); ctx.lineTo(s * 0.8, -2); ctx.lineTo(s * 0.8, 2);
+        ctx.closePath(); ctx.fill();
+        ctx.restore();
+      }
+      ctx.restore();
+      return;
+    }
+    case "silo": {
+      ctx.fillStyle = color;
+      roundRect(ctx, -s * 0.5, -s, s, s * 2, s * 0.5);
+      ctx.fill();
+      ctx.fillStyle = "#888";
+      ctx.beginPath(); ctx.arc(0, -s, s * 0.5, Math.PI, 0); ctx.fill();
+      return;
+    }
+    case "barn": {
+      ctx.fillStyle = color;
+      roundRect(ctx, -s, -s * 0.6, s * 2, s * 1.2, 3);
+      ctx.fill();
+      ctx.fillStyle = "#3a2a22";
+      ctx.fillRect(-s * 0.2, 0, s * 0.4, s * 0.6);
+      ctx.strokeStyle = "#fff";
+      ctx.beginPath();
+      ctx.moveTo(-s, -s * 0.6); ctx.lineTo(0, -s); ctx.lineTo(s, -s * 0.6);
+      ctx.stroke();
+      return;
+    }
+    case "chickenCoop": {
+      ctx.fillStyle = color;
+      roundRect(ctx, -s, -s * 0.5, s * 2, s, 2);
+      ctx.fill();
+      ctx.fillStyle = "#8a3a2a";
+      ctx.beginPath();
+      ctx.moveTo(-s, -s * 0.5); ctx.lineTo(0, -s); ctx.lineTo(s, -s * 0.5);
+      ctx.closePath(); ctx.fill();
+      return;
+    }
+    case "pumpkin": {
+      ctx.fillStyle = color;
+      ctx.beginPath(); ctx.arc(0, 0, s, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "rgba(0,0,0,0.3)";
+      for (let i = -2; i <= 2; i++) {
+        ctx.beginPath();
+        ctx.ellipse(0, 0, s * 0.3, s, i * 0.2, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.fillStyle = "#3a5a2a";
+      ctx.fillRect(-1, -s - 2, 2, 4);
+      return;
+    }
+    case "sandcastle": {
+      ctx.fillStyle = color;
+      ctx.fillRect(-s, 0, s * 2, s * 0.6);
+      ctx.fillRect(-s, -s * 0.2, s * 0.4, s * 0.6);
+      ctx.fillRect(s * 0.6 - s * 0.4, -s * 0.2, s * 0.4, s * 0.6);
+      ctx.fillRect(-s * 0.2, -s * 0.4, s * 0.4, s * 0.6);
+      return;
+    }
+    case "beachChair": {
+      ctx.fillStyle = color;
+      roundRect(ctx, -s * 0.6, -s * 0.6, s * 1.2, s, 2);
+      ctx.fill();
+      ctx.fillStyle = "rgba(255,255,255,0.25)";
+      ctx.fillRect(-s * 0.6, -s * 0.6, s * 1.2, 2);
+      return;
+    }
+    case "surfboard": {
+      ctx.fillStyle = color;
+      roundRect(ctx, -s, -s * 0.3, s * 2, s * 0.6, s * 0.3);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(0,0,0,0.3)"; ctx.beginPath();
+      ctx.moveTo(-s + 4, 0); ctx.lineTo(s - 4, 0); ctx.stroke();
+      return;
+    }
+    case "beachTowel": {
+      ctx.fillStyle = color;
+      ctx.fillRect(-s, -s * 0.6, s * 2, s * 1.2);
+      ctx.strokeStyle = "rgba(255,255,255,0.4)";
+      for (let i = -2; i <= 2; i++) {
+        ctx.beginPath();
+        ctx.moveTo(i * (s / 3), -s * 0.6); ctx.lineTo(i * (s / 3), s * 0.6);
+        ctx.stroke();
+      }
+      return;
+    }
+    case "lifebuoy":
+    case "buoy": {
+      ctx.fillStyle = color;
+      ctx.beginPath(); ctx.arc(0, 0, s, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#fff";
+      ctx.beginPath(); ctx.arc(0, 0, s * 0.55, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = color;
+      for (let i = 0; i < 4; i++) {
+        const a = i * Math.PI / 2;
+        ctx.beginPath();
+        ctx.arc(Math.cos(a) * s * 0.7, Math.sin(a) * s * 0.7, s * 0.18, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      return;
+    }
+    case "anchor": {
+      ctx.strokeStyle = color; ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(0, -s * 0.5, s * 0.25, 0, Math.PI * 2);
+      ctx.moveTo(0, -s * 0.25); ctx.lineTo(0, s * 0.5);
+      ctx.moveTo(-s * 0.5, s * 0.5); ctx.quadraticCurveTo(0, s, s * 0.5, s * 0.5);
+      ctx.stroke();
+      return;
+    }
+    case "lighthouse": {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(-s * 0.4, s); ctx.lineTo(s * 0.4, s); ctx.lineTo(s * 0.2, -s); ctx.lineTo(-s * 0.2, -s);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "#c83a2a";
+      ctx.fillRect(-s * 0.3, -s * 0.4, s * 0.6, s * 0.2);
+      ctx.fillStyle = "#fcd34d";
+      ctx.beginPath(); ctx.arc(0, -s + 4, 4, 0, Math.PI * 2); ctx.fill();
+      return;
+    }
+    case "dock": {
+      ctx.fillStyle = color;
+      ctx.fillRect(-s, -s * 0.4, s * 2, s * 0.8);
+      ctx.fillStyle = shade(color, -0.25);
+      for (let i = -s; i < s; i += 6) {
+        ctx.fillRect(i, -s * 0.4, 1, s * 0.8);
+      }
+      return;
+    }
+    case "crate":
+    case "pallet": {
+      ctx.fillStyle = color;
+      ctx.fillRect(-s * 0.6, -s * 0.6, s * 1.2, s * 1.2);
+      ctx.strokeStyle = shade(color, -0.3);
+      ctx.strokeRect(-s * 0.6, -s * 0.6, s * 1.2, s * 1.2);
+      ctx.beginPath();
+      ctx.moveTo(-s * 0.6, -s * 0.6); ctx.lineTo(s * 0.6, s * 0.6);
+      ctx.moveTo(s * 0.6, -s * 0.6); ctx.lineTo(-s * 0.6, s * 0.6);
+      ctx.stroke();
+      return;
+    }
+    case "constructionSign":
+    case "barricade": {
+      ctx.fillStyle = color;
+      roundRect(ctx, -s, -s * 0.3, s * 2, s * 0.6, 2);
+      ctx.fill();
+      ctx.fillStyle = "#222";
+      for (let i = 0; i < 5; i++) {
+        ctx.fillRect(-s + i * (s / 2.5), -s * 0.3, 4, s * 0.6);
+      }
+      return;
+    }
+    case "scaffold": {
+      ctx.strokeStyle = color; ctx.lineWidth = 1.5;
+      ctx.strokeRect(-s, -s, s * 2, s * 2);
+      ctx.beginPath();
+      ctx.moveTo(-s, 0); ctx.lineTo(s, 0);
+      ctx.moveTo(0, -s); ctx.lineTo(0, s);
+      ctx.stroke();
+      return;
+    }
+    case "portaPotty": {
+      ctx.fillStyle = color;
+      roundRect(ctx, -s * 0.5, -s, s, s * 2, 2);
+      ctx.fill();
+      ctx.fillStyle = "rgba(0,0,0,0.3)";
+      ctx.fillRect(-s * 0.4, -s * 0.4, s * 0.8, 2);
+      return;
+    }
+    case "fence":
+    case "chainLink":
+    case "ironGate":
+    case "lowWall":
+    case "brickWall": {
+      ctx.fillStyle = color;
+      ctx.fillRect(-s, -s * 0.2, s * 2, s * 0.4);
+      ctx.strokeStyle = "rgba(0,0,0,0.35)";
+      for (let i = -s; i <= s; i += 6) {
+        ctx.beginPath(); ctx.moveTo(i, -s * 0.3); ctx.lineTo(i, s * 0.3); ctx.stroke();
+      }
+      return;
+    }
+    case "flagpole": {
+      ctx.fillStyle = "#888";
+      ctx.fillRect(-1, -s, 2, s * 2);
+      ctx.fillStyle = color;
+      const wave = Math.sin(time * 4) * 1.5;
+      ctx.beginPath();
+      ctx.moveTo(1, -s);
+      ctx.lineTo(s * 1.1 + wave, -s * 0.8);
+      ctx.lineTo(s * 1.1 + wave, -s * 0.4);
+      ctx.lineTo(1, -s * 0.5);
+      ctx.closePath(); ctx.fill();
+      return;
+    }
+    case "antenna":
+    case "satelliteDish": {
+      ctx.fillStyle = color;
+      ctx.fillRect(-1, -s, 2, s * 2);
+      if (shape === "satelliteDish") {
+        ctx.beginPath(); ctx.arc(0, -s * 0.5, s * 0.6, 0, Math.PI, true); ctx.fill();
+      } else {
+        ctx.beginPath();
+        ctx.moveTo(-s * 0.3, -s); ctx.lineTo(s * 0.3, -s);
+        ctx.stroke();
+      }
+      return;
+    }
+    case "solarPanel": {
+      ctx.fillStyle = color;
+      roundRect(ctx, -s, -s * 0.7, s * 2, s * 1.4, 2);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(160,200,240,0.5)";
+      for (let i = -2; i <= 2; i++) {
+        ctx.beginPath(); ctx.moveTo(i * (s / 3), -s * 0.7); ctx.lineTo(i * (s / 3), s * 0.7); ctx.stroke();
+      }
+      ctx.beginPath(); ctx.moveTo(-s, 0); ctx.lineTo(s, 0); ctx.stroke();
+      return;
+    }
+    case "pool":
+    case "hotTub": {
+      ctx.fillStyle = "#cfc6b8";
+      roundRect(ctx, -s, -s * 0.7, s * 2, s * 1.4, 4);
+      ctx.fill();
+      ctx.fillStyle = color;
+      roundRect(ctx, -s + 4, -s * 0.7 + 4, s * 2 - 8, s * 1.4 - 8, 3);
+      ctx.fill();
+      // animated shimmer
+      ctx.strokeStyle = "rgba(255,255,255,0.4)";
+      for (let i = 0; i < 3; i++) {
+        ctx.beginPath();
+        const y = -s * 0.4 + (i * s * 0.4) + Math.sin(time * 2 + i) * 2;
+        ctx.moveTo(-s + 6, y); ctx.lineTo(s - 6, y); ctx.stroke();
+      }
+      return;
+    }
+    case "trampoline": {
+      ctx.fillStyle = color;
+      ctx.beginPath(); ctx.arc(0, 0, s, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#4a3a2a";
+      ctx.beginPath(); ctx.arc(0, 0, s * 0.8, 0, Math.PI * 2); ctx.fill();
+      return;
+    }
+    case "grill":
+    case "firePit": {
+      ctx.fillStyle = color;
+      ctx.beginPath(); ctx.arc(0, 0, s, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = shape === "firePit" ? "#e8602a" : "#4a3a2a";
+      ctx.beginPath(); ctx.arc(0, 0, s * 0.6, 0, Math.PI * 2); ctx.fill();
+      if (shape === "firePit") {
+        ctx.fillStyle = "#fcd34d";
+        const flick = (Math.sin(time * 8) + 1) / 2;
+        ctx.beginPath();
+        ctx.arc(0, -2, s * 0.3 * (0.7 + flick * 0.3), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      return;
+    }
+    case "snowman": {
+      ctx.fillStyle = "#fff";
+      ctx.beginPath(); ctx.arc(0, s * 0.3, s * 0.7, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(0, -s * 0.4, s * 0.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#222";
+      ctx.beginPath(); ctx.arc(-s * 0.15, -s * 0.45, 1, 0, Math.PI * 2);
+      ctx.arc(s * 0.15, -s * 0.45, 1, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#e87a2a";
+      ctx.fillRect(0, -s * 0.4, 3, 1);
+      return;
+    }
+    case "iglooSm": {
+      ctx.fillStyle = color;
+      ctx.beginPath(); ctx.arc(0, 0, s, Math.PI, 0); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "#222";
+      ctx.beginPath(); ctx.arc(0, 0, s * 0.3, Math.PI, 0); ctx.closePath(); ctx.fill();
+      return;
+    }
+    case "ghostDecor": {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(0, 0, s, Math.PI, 0);
+      ctx.lineTo(s, s * 0.6);
+      ctx.quadraticCurveTo(s * 0.5, s * 0.4, 0, s * 0.6);
+      ctx.quadraticCurveTo(-s * 0.5, s * 0.4, -s, s * 0.6);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "#222";
+      ctx.beginPath(); ctx.arc(-s * 0.3, -s * 0.1, 1.5, 0, Math.PI * 2);
+      ctx.arc(s * 0.3, -s * 0.1, 1.5, 0, Math.PI * 2); ctx.fill();
+      return;
+    }
+    case "lantern":
+    case "torch": {
+      ctx.fillStyle = "#7a4a2a";
+      ctx.fillRect(-1, -s * 0.2, 2, s);
+      ctx.fillStyle = color;
+      if (shape === "lantern") {
+        roundRect(ctx, -s * 0.4, -s * 0.6, s * 0.8, s * 0.8, 2);
+        ctx.fill();
+      } else {
+        const flick = Math.sin(time * 9) * 0.2 + 1;
+        ctx.beginPath();
+        ctx.ellipse(0, -s * 0.6, s * 0.25 * flick, s * 0.4 * flick, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      return;
+    }
+    default: {
+      ctx.fillStyle = color;
+      ctx.beginPath(); ctx.arc(0, 0, s * 0.7, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+}
+
+function roundRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number,
+) {
+  const rr = Math.max(0, Math.min(r, Math.min(w, h) / 2));
+  ctx.beginPath();
+  ctx.moveTo(x + rr, y);
+  ctx.lineTo(x + w - rr, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + rr);
+  ctx.lineTo(x + w, y + h - rr);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - rr, y + h);
+  ctx.lineTo(x + rr, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - rr);
+  ctx.lineTo(x, y + rr);
+  ctx.quadraticCurveTo(x, y, x + rr, y);
+  ctx.closePath();
+}
