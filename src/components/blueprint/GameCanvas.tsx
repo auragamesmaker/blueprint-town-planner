@@ -12,6 +12,7 @@ import type {
   BuildingKind,
   NatureKind,
   NatureObj,
+  PropObj,
   RoadDecal,
   RoadSegment,
   SignKind,
@@ -20,6 +21,9 @@ import type {
   WaterKind,
   WaterObj,
 } from "@/lib/blueprint/types";
+import { PROP_CATALOG, type PropDef, type PropShape } from "@/lib/blueprint/catalog";
+
+const PROP_BY_ID = new Map<string, PropDef>(PROP_CATALOG.map((p) => [p.id, p]));
 
 const BUILDING_SIZES: Record<BuildingKind, Vec2> = {
   house: { x: 90, y: 110 },
@@ -82,6 +86,10 @@ export function GameCanvas() {
     | { kind: "decal"; id: string }
     | null
   >(null);
+  const marqueeRef = useRef<{ start: Vec2; end: Vec2 } | null>(null);
+  const [marquee, setMarquee] = useState<{ start: Vec2; end: Vec2 } | null>(null);
+  const timeRef = useRef(0);
+  const [tick, setTick] = useState(0);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -90,6 +98,18 @@ export function GameCanvas() {
     });
     ro.observe(containerRef.current);
     return () => ro.disconnect();
+  }, []);
+
+  // Animation loop — drives water shimmer + windmill etc.
+  useEffect(() => {
+    let raf = 0;
+    const loop = (t: number) => {
+      timeRef.current = t / 1000;
+      setTick((n) => (n + 1) % 1_000_000);
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
   }, []);
 
   useEffect(() => {
@@ -103,8 +123,8 @@ export function GameCanvas() {
     c.style.width = `${dims.w}px`;
     c.style.height = `${dims.h}px`;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    draw(ctx, dims.w, dims.h, game, roadStart, mousePos, waterPoints);
-  }, [dims, game.city, game.camera, game.selectedId, roadStart, mousePos, waterPoints, game]);
+    draw(ctx, dims.w, dims.h, game, roadStart, mousePos, waterPoints, timeRef.current, marquee);
+  }, [dims, game.city, game.camera, game.selectedId, game.selectedIds, roadStart, mousePos, waterPoints, marquee, tick, game]);
 
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
@@ -126,6 +146,13 @@ export function GameCanvas() {
 
     if (e.button === 1 || e.shiftKey) {
       panRef.current = { x: e.clientX, y: e.clientY, cx: game.camera.x, cy: game.camera.y };
+      return;
+    }
+
+    // Ctrl/Cmd + drag → marquee select
+    if (e.ctrlKey || e.metaKey) {
+      marqueeRef.current = { start: world, end: world };
+      setMarquee({ start: world, end: world });
       return;
     }
 
@@ -236,6 +263,21 @@ export function GameCanvas() {
         };
         game.addObject(s);
         game.select(s.id);
+      } else if (sub === "prop") {
+        const id = game.tool.variant;
+        if (!id) return;
+        const def = PROP_BY_ID.get(id);
+        if (!def) return;
+        const p: PropObj = {
+          id: newId(),
+          kind: "prop",
+          catalogId: def.id,
+          pos: world,
+          size: def.size,
+          rotation: 0,
+          color: def.color,
+        };
+        game.addObject(p);
       }
     }
   };
@@ -244,6 +286,13 @@ export function GameCanvas() {
     if (panRef.current) {
       const p = panRef.current;
       game.setCamera({ x: p.cx + (e.clientX - p.x), y: p.cy + (e.clientY - p.y) });
+      return;
+    }
+    if (marqueeRef.current) {
+      const rect = ref.current!.getBoundingClientRect();
+      const world = toWorld(e.clientX - rect.left, e.clientY - rect.top);
+      marqueeRef.current = { ...marqueeRef.current, end: world };
+      setMarquee({ ...marqueeRef.current });
       return;
     }
     if (movingRef.current) {
@@ -276,6 +325,26 @@ export function GameCanvas() {
   const handleUp = (e: React.MouseEvent) => {
     if (panRef.current) {
       panRef.current = null;
+      return;
+    }
+    if (marqueeRef.current) {
+      const { start, end } = marqueeRef.current;
+      marqueeRef.current = null;
+      setMarquee(null);
+      const minX = Math.min(start.x, end.x);
+      const minY = Math.min(start.y, end.y);
+      const maxX = Math.max(start.x, end.x);
+      const maxY = Math.max(start.y, end.y);
+      const ids = game.city.objects
+        .filter((o) => objInBox(o, minX, minY, maxX, maxY, game.city.objects))
+        .map((o) => o.id);
+      if (ids.length === 0) {
+        game.select(null);
+      } else if (game.tool.kind === "delete") {
+        game.deleteMany(ids);
+      } else {
+        game.selectMany(ids);
+      }
       return;
     }
     if (movingRef.current) {
@@ -321,7 +390,13 @@ export function GameCanvas() {
       if (e.key === "r" || e.key === "R") {
         if (game.selectedId) {
           const o = game.city.objects.find((x) => x.id === game.selectedId);
-          if (o && (o.kind === "building" || o.kind === "nature" || o.kind === "sign")) {
+          if (
+            o &&
+            (o.kind === "building" ||
+              o.kind === "nature" ||
+              o.kind === "sign" ||
+              o.kind === "prop")
+          ) {
             game.updateObject(o.id, {
               rotation: o.rotation + Math.PI / 12,
             } as Partial<AnyObject>);
@@ -332,6 +407,13 @@ export function GameCanvas() {
         setRoadStart(null);
         setWaterPoints([]);
         game.select(null);
+      }
+      if (e.key === "Delete" || e.key === "Backspace") {
+        if (game.selectedIds.length > 1) {
+          game.deleteMany(game.selectedIds);
+        } else if (game.selectedId) {
+          game.deleteObject(game.selectedId);
+        }
       }
     };
     window.addEventListener("keydown", onKey);
@@ -404,6 +486,8 @@ function hitTest(p: Vec2, objs: AnyObject[]): AnyObject | null {
       if (Math.abs(dx) < o.size.x / 2 && Math.abs(dy) < o.size.y / 2) return o;
     } else if (o.kind === "nature") {
       if (Math.hypot(p.x - o.pos.x, p.y - o.pos.y) < o.size) return o;
+    } else if (o.kind === "prop") {
+      if (Math.hypot(p.x - o.pos.x, p.y - o.pos.y) < o.size + 4) return o;
     } else if (o.kind === "sign") {
       if (Math.abs(p.x - o.pos.x) < 40 && Math.abs(p.y - o.pos.y) < 16) return o;
     } else if (o.kind === "road") {
@@ -419,6 +503,28 @@ function hitTest(p: Vec2, objs: AnyObject[]): AnyObject | null {
     }
   }
   return null;
+}
+
+function objInBox(
+  o: AnyObject,
+  minX: number,
+  minY: number,
+  maxX: number,
+  maxY: number,
+  all: AnyObject[],
+): boolean {
+  const inside = (p: Vec2) => p.x >= minX && p.x <= maxX && p.y >= minY && p.y <= maxY;
+  if (o.kind === "building" || o.kind === "nature" || o.kind === "sign" || o.kind === "prop") {
+    return inside(o.pos);
+  }
+  if (o.kind === "road") return inside(o.a) || inside(o.b);
+  if (o.kind === "water") return o.points.some(inside);
+  if (o.kind === "roadDecal") {
+    const road = all.find((x) => x.id === o.roadId) as RoadSegment | undefined;
+    if (!road) return false;
+    return inside(pointAt(road, o.t));
+  }
+  return false;
 }
 
 function distToSegment(p: Vec2, a: Vec2, b: Vec2) {
@@ -439,6 +545,8 @@ function draw(
   roadStart: Vec2 | null,
   mouseScreen: Vec2 | null,
   waterPoints: Vec2[],
+  time: number,
+  marquee: { start: Vec2; end: Vec2 } | null,
 ) {
   ctx.fillStyle = "#9bbf8a";
   ctx.fillRect(0, 0, w, h);
@@ -471,16 +579,19 @@ function draw(
   const nature = game.city.objects.filter((o) => o.kind === "nature") as NatureObj[];
   const signs = game.city.objects.filter((o) => o.kind === "sign") as SignObj[];
   const decals = game.city.objects.filter((o) => o.kind === "roadDecal") as RoadDecal[];
+  const props = game.city.objects.filter((o) => o.kind === "prop") as PropObj[];
+  const selSet = new Set(game.selectedIds);
 
-  drawWaterMerged(ctx, water, game.selectedId);
+  drawWaterMerged(ctx, water, game.selectedId, time);
   drawRoadsMerged(ctx, roads, game.selectedId);
   decals.forEach((d) => {
     const road = roads.find((r) => r.id === d.roadId);
-    if (road) drawDecal(ctx, d, road, d.id === game.selectedId);
+    if (road) drawDecal(ctx, d, road, selSet.has(d.id) || d.id === game.selectedId);
   });
-  buildings.forEach((b) => drawBuilding(ctx, b, b.id === game.selectedId));
-  nature.forEach((n) => drawNature(ctx, n, n.id === game.selectedId));
-  signs.forEach((s) => drawSign(ctx, s, s.id === game.selectedId));
+  buildings.forEach((b) => drawBuilding(ctx, b, selSet.has(b.id) || b.id === game.selectedId));
+  nature.forEach((n) => drawNature(ctx, n, selSet.has(n.id) || n.id === game.selectedId));
+  signs.forEach((s) => drawSign(ctx, s, selSet.has(s.id) || s.id === game.selectedId));
+  props.forEach((p) => drawProp(ctx, p, selSet.has(p.id) || p.id === game.selectedId, time));
 
   if (roadStart && mouseScreen) {
     const end = screenToWorld(mouseScreen.x, mouseScreen.y, game.camera);
@@ -506,6 +617,21 @@ function draw(
       ctx.lineTo(m.x, m.y);
     }
     ctx.stroke();
+  }
+
+  // Marquee selection rectangle (world space)
+  if (marquee) {
+    const x = Math.min(marquee.start.x, marquee.end.x);
+    const y = Math.min(marquee.start.y, marquee.end.y);
+    const wd = Math.abs(marquee.end.x - marquee.start.x);
+    const hd = Math.abs(marquee.end.y - marquee.start.y);
+    ctx.fillStyle = "rgba(120,180,255,0.18)";
+    ctx.fillRect(x, y, wd, hd);
+    ctx.strokeStyle = "rgba(180,220,255,0.9)";
+    ctx.lineWidth = 1.5 / game.camera.zoom;
+    ctx.setLineDash([6 / game.camera.zoom, 4 / game.camera.zoom]);
+    ctx.strokeRect(x, y, wd, hd);
+    ctx.setLineDash([]);
   }
 
   ctx.restore();
