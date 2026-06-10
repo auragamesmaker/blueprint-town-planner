@@ -70,7 +70,7 @@ function PlayPage() {
 
       {/* hint */}
       <div className="pointer-events-none absolute bottom-44 left-1/2 z-20 -translate-x-1/2 rounded-full bg-black/40 px-4 py-1.5 text-xs text-white/70 backdrop-blur-md">
-        Shift+drag to pan · Scroll to zoom · R to rotate · Esc to cancel
+        Shift+drag pan · Scroll zoom · Ctrl+drag box-select · R rotate · Del delete · Esc cancel
       </div>
     </main>
   );
