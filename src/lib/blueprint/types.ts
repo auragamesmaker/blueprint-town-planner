@@ -75,13 +75,24 @@ export type RoadDecal = {
   t: number; // 0..1 along road
 };
 
+export type PropObj = {
+  id: string;
+  kind: "prop";
+  catalogId: string;
+  pos: Vec2;
+  size: number;
+  rotation: number;
+  color?: string;
+};
+
 export type AnyObject =
   | RoadSegment
   | Building
   | NatureObj
   | WaterObj
   | SignObj
-  | RoadDecal;
+  | RoadDecal
+  | PropObj;
 
 export type CityState = {
   objects: AnyObject[];
