@@ -50,7 +50,7 @@ export function createSlot(townName: string): SaveSlot {
 }
 
 export type Tool =
-  | { kind: "build"; sub: "road" | "building" | "nature" | "water" | "sign" | "forest"; variant?: string }
+  | { kind: "build"; sub: "road" | "building" | "nature" | "water" | "sign" | "forest" | "prop"; variant?: string }
   | { kind: "move" }
   | { kind: "delete" };
 
@@ -63,6 +63,7 @@ type GameStore = {
   tool: Tool;
   camera: Camera;
   selectedId: string | null;
+  selectedIds: string[];
   snapToGrid: boolean;
   mapOpen: boolean;
   hydrate: (slot: SaveSlot) => void;
@@ -72,8 +73,11 @@ type GameStore = {
   zoomAt: (factor: number, cx: number, cy: number) => void;
   addObject: (o: AnyObject) => void;
   updateObject: (id: string, patch: Partial<AnyObject>) => void;
+  updateMany: (ids: string[], patch: Partial<AnyObject>) => void;
   deleteObject: (id: string) => void;
+  deleteMany: (ids: string[]) => void;
   select: (id: string | null) => void;
+  selectMany: (ids: string[]) => void;
   setSnap: (v: boolean) => void;
   setTime: (t: number) => void;
   setWeather: (w: CityState["weather"]) => void;
@@ -88,6 +92,7 @@ export const useGame = create<GameStore>((set, get) => ({
   tool: { kind: "build", sub: "road" },
   camera: { x: 0, y: 0, zoom: 1 },
   selectedId: null,
+  selectedIds: [],
   snapToGrid: true,
   mapOpen: false,
   hydrate: (slot) =>
@@ -97,8 +102,9 @@ export const useGame = create<GameStore>((set, get) => ({
       city: slot.state,
       camera: { x: 0, y: 0, zoom: 1 },
       selectedId: null,
+      selectedIds: [],
     }),
-  setTool: (tool) => set({ tool, selectedId: null }),
+  setTool: (tool) => set({ tool, selectedId: null, selectedIds: [] }),
   setCamera: (c) => set((s) => ({ camera: { ...s.camera, ...c } })),
   panBy: (dx, dy) =>
     set((s) => ({ camera: { ...s.camera, x: s.camera.x + dx, y: s.camera.y + dy } })),
@@ -129,6 +135,18 @@ export const useGame = create<GameStore>((set, get) => ({
     }));
     get().save();
   },
+  updateMany: (ids, patch) => {
+    const set2 = new Set(ids);
+    set((s) => ({
+      city: {
+        ...s.city,
+        objects: s.city.objects.map((o) =>
+          set2.has(o.id) ? ({ ...o, ...patch } as AnyObject) : o,
+        ),
+      },
+    }));
+    get().save();
+  },
   deleteObject: (id) => {
     set((s) => ({
       city: {
@@ -141,7 +159,24 @@ export const useGame = create<GameStore>((set, get) => ({
     }));
     get().save();
   },
-  select: (id) => set({ selectedId: id }),
+  deleteMany: (ids) => {
+    const set2 = new Set(ids);
+    set((s) => ({
+      city: {
+        ...s.city,
+        objects: s.city.objects.filter(
+          (o) =>
+            !set2.has(o.id) &&
+            !(o.kind === "roadDecal" && set2.has(o.roadId)),
+        ),
+      },
+      selectedId: null,
+      selectedIds: [],
+    }));
+    get().save();
+  },
+  select: (id) => set({ selectedId: id, selectedIds: id ? [id] : [] }),
+  selectMany: (ids) => set({ selectedIds: ids, selectedId: ids[0] ?? null }),
   setSnap: (v) => set({ snapToGrid: v }),
   setTime: (t) => {
     set((s) => ({ city: { ...s.city, timeOfDay: t } }));
