@@ -650,11 +650,13 @@ function drawWaterMerged(
   ctx: CanvasRenderingContext2D,
   water: WaterObj[],
   selectedId: string | null,
+  time: number,
 ) {
   if (water.length === 0) return;
   // Single fill path so overlaps merge seamlessly into one shape.
-  ctx.fillStyle = WATER_COLOR;
-  ctx.strokeStyle = WATER_COLOR;
+  // Depth gradient via radial-ish layering: dark base + lighter inset.
+  ctx.fillStyle = "#3e7fa3";
+  ctx.strokeStyle = "#3e7fa3";
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
 
@@ -676,16 +678,74 @@ function drawWaterMerged(
   });
   ctx.stroke();
 
-  // Subtle highlight ripples (per shape)
-  ctx.strokeStyle = "rgba(255,255,255,0.25)";
-  ctx.lineWidth = 1.5;
+  // Lighter inset color
+  ctx.fillStyle = "#5a93b8";
+  ctx.strokeStyle = "#5a93b8";
+  ctx.beginPath();
+  water.forEach((wt) => {
+    if (wt.variant === "river") return;
+    wt.points.forEach((p, i) => {
+      const cx = wt.points.reduce((s, q) => s + q.x, 0) / wt.points.length;
+      const cy = wt.points.reduce((s, q) => s + q.y, 0) / wt.points.length;
+      const ix = cx + (p.x - cx) * 0.86;
+      const iy = cy + (p.y - cy) * 0.86;
+      i === 0 ? ctx.moveTo(ix, iy) : ctx.lineTo(ix, iy);
+    });
+    ctx.closePath();
+  });
+  ctx.fill();
+  ctx.lineWidth = 16;
+  ctx.beginPath();
+  water.forEach((wt) => {
+    if (wt.variant !== "river") return;
+    wt.points.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+  });
+  ctx.stroke();
+
+  // Animated shimmer — moving wavy highlights
+  ctx.save();
+  ctx.strokeStyle = "rgba(255,255,255,0.4)";
+  ctx.lineWidth = 1.2;
   water.forEach((wt) => {
     if (wt.variant === "river") {
       ctx.beginPath();
-      wt.points.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+      for (let k = 1; k < wt.points.length; k++) {
+        const a = wt.points[k - 1];
+        const b = wt.points[k];
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const len = Math.hypot(dx, dy);
+        const nx = -dy / (len || 1);
+        const ny = dx / (len || 1);
+        const steps = Math.max(2, Math.floor(len / 8));
+        for (let s = 0; s <= steps; s++) {
+          const t = s / steps;
+          const wave = Math.sin(time * 2 + (a.x + a.y) * 0.05 + s * 0.6) * 3;
+          const px = a.x + dx * t + nx * wave;
+          const py = a.y + dy * t + ny * wave;
+          s === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+        }
+      }
       ctx.stroke();
+    } else {
+      // ripple ellipses inside polygon
+      const cx = wt.points.reduce((s, q) => s + q.x, 0) / wt.points.length;
+      const cy = wt.points.reduce((s, q) => s + q.y, 0) / wt.points.length;
+      const maxR = Math.max(
+        ...wt.points.map((p) => Math.hypot(p.x - cx, p.y - cy)),
+      );
+      for (let i = 0; i < 3; i++) {
+        const phase = (time * 0.6 + i * 0.7) % 1;
+        const r = maxR * (0.2 + phase * 0.7);
+        ctx.globalAlpha = (1 - phase) * 0.35;
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, r, r * 0.65, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
     }
   });
+  ctx.restore();
 
   // Selection outline (dashed) on top
   const sel = water.find((w) => w.id === selectedId);
