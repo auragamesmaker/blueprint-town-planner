@@ -1,15 +1,25 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useGame } from "@/lib/blueprint/store";
-import { PROP_CATALOG, PROP_CATEGORIES } from "@/lib/blueprint/catalog";
+import { PROP_CATALOG, getSubcategories } from "@/lib/blueprint/catalog";
 
+// Top-level tabs. Built-in tabs render their own palettes; the rest pull from
+// PROP_CATALOG with subcategory folders.
 const TABS = [
-  { id: "road", label: "Roads", emoji: "🛣️" },
-  { id: "building", label: "Buildings", emoji: "🏠" },
-  { id: "nature", label: "Nature", emoji: "🌳" },
-  { id: "prop", label: "Props", emoji: "🪑" },
-  { id: "water", label: "Water", emoji: "💧" },
-  { id: "sign", label: "Signs", emoji: "🪧" },
-  { id: "settings", label: "Settings", emoji: "⚙️" },
+  { id: "road",       label: "Roads",      emoji: "🛣️", source: "builtin" },
+  { id: "building",   label: "Buildings",  emoji: "🏙️", source: "mixed",   catalogCat: "Buildings" },
+  { id: "nature",     label: "Nature",     emoji: "🌳", source: "mixed",   catalogCat: "Nature" },
+  { id: "water",      label: "Water",      emoji: "💧", source: "builtin" },
+  { id: "sign",       label: "Signs",      emoji: "🪧", source: "mixed",   catalogCat: "Signs" },
+  { id: "vehicles",   label: "Vehicles",   emoji: "🚗", source: "catalog", catalogCat: "Vehicles" },
+  { id: "street",     label: "Street",     emoji: "🛋️", source: "catalog", catalogCat: "Street" },
+  { id: "park",       label: "Park",       emoji: "🎠", source: "catalog", catalogCat: "Park" },
+  { id: "sports",     label: "Sports",     emoji: "⚽", source: "catalog", catalogCat: "Sports" },
+  { id: "farm",       label: "Farm",       emoji: "🚜", source: "catalog", catalogCat: "Farm" },
+  { id: "beach",      label: "Beach",      emoji: "🏖️", source: "catalog", catalogCat: "Beach" },
+  { id: "industrial", label: "Industrial", emoji: "🏭", source: "catalog", catalogCat: "Industrial" },
+  { id: "walls",      label: "Walls",      emoji: "🧱", source: "catalog", catalogCat: "Walls" },
+  { id: "decor",      label: "Decor",      emoji: "🎃", source: "catalog", catalogCat: "Decor" },
+  { id: "settings",   label: "Settings",   emoji: "⚙️", source: "builtin" },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
@@ -24,7 +34,7 @@ const BUILDINGS = [
   { id: "restaurant", label: "Restaurant" },
 ];
 
-const NATURE = [
+const NATURE_BUILTIN = [
   { id: "grass", label: "Grass" },
   { id: "tree", label: "Tree" },
   { id: "bush", label: "Bush" },
@@ -37,7 +47,7 @@ const WATER = [
   { id: "river", label: "River (double-click to finish)" },
 ];
 
-const SIGNS = [
+const SIGNS_BUILTIN = [
   { id: "street", label: "Street Sign" },
   { id: "town", label: "Town Sign" },
   { id: "highway", label: "Highway Sign" },
@@ -48,13 +58,14 @@ export function BottomBar() {
   const [tab, setTab] = useState<TabId>("road");
 
   const build = game.tool.kind === "build" ? game.tool : null;
+  const current = TABS.find((t) => t.id === tab)!;
 
   return (
     <div className="pointer-events-auto absolute inset-x-0 bottom-0 z-30">
-      <div className="mx-auto max-w-5xl px-4 pb-4">
+      <div className="mx-auto max-w-6xl px-4 pb-4">
         <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/50 backdrop-blur-xl shadow-2xl">
           {/* tab bar */}
-          <div className="flex items-center justify-between gap-1 border-b border-white/10 bg-black/30 px-2">
+          <div className="flex items-center gap-1 overflow-x-auto border-b border-white/10 bg-black/30 px-2">
             {TABS.map((t) => {
               const on = tab === t.id;
               return (
@@ -64,7 +75,7 @@ export function BottomBar() {
                     setTab(t.id);
                     if (t.id === "road") game.setTool({ kind: "build", sub: "road" });
                   }}
-                  className={`flex flex-1 items-center justify-center gap-2 px-3 py-3 text-xs font-medium tracking-wide uppercase transition ${
+                  className={`relative flex flex-shrink-0 items-center justify-center gap-2 px-3 py-3 text-xs font-medium tracking-wide uppercase transition ${
                     on ? "text-white" : "text-white/50 hover:text-white/80"
                   }`}
                 >
@@ -82,7 +93,7 @@ export function BottomBar() {
           </div>
 
           {/* tab content */}
-          <div className="flex min-h-[110px] items-center gap-2 overflow-x-auto p-4">
+          <div className="flex min-h-[140px] items-center gap-2 overflow-x-auto p-4">
             {tab === "road" && (
               <div className="flex w-full items-center gap-3">
                 <PaletteItem
@@ -96,18 +107,29 @@ export function BottomBar() {
                 </p>
               </div>
             )}
-            {tab === "building" &&
-              BUILDINGS.map((b) => (
-                <PaletteItem
-                  key={b.id}
-                  label={b.label}
-                  active={build?.sub === "building" && build.variant === b.id}
-                  onClick={() => game.setTool({ kind: "build", sub: "building", variant: b.id })}
-                />
-              ))}
+            {tab === "building" && (
+              <CategoryPalette
+                catalogCat="Buildings"
+                prefix={
+                  <div className="mb-2 flex flex-wrap gap-1.5">
+                    {BUILDINGS.map((b) => (
+                      <PaletteItem
+                        key={b.id}
+                        label={b.label}
+                        active={build?.sub === "building" && build.variant === b.id}
+                        onClick={() => game.setTool({ kind: "build", sub: "building", variant: b.id })}
+                      />
+                    ))}
+                  </div>
+                }
+              />
+            )}
             {tab === "nature" && (
-              <>
-                {NATURE.map((n) => (
+              <CategoryPalette
+                catalogCat="Nature"
+                prefix={
+                  <div className="mb-2 flex flex-wrap gap-1.5">
+                    {NATURE_BUILTIN.map((n) => (
                   <PaletteItem
                     key={n.id}
                     label={n.label}
@@ -120,7 +142,9 @@ export function BottomBar() {
                   active={build?.sub === "forest"}
                   onClick={() => game.setTool({ kind: "build", sub: "forest" })}
                 />
-              </>
+                  </div>
+                }
+              />
             )}
             {tab === "water" &&
               WATER.map((w) => (
@@ -131,16 +155,26 @@ export function BottomBar() {
                   onClick={() => game.setTool({ kind: "build", sub: "water", variant: w.id })}
                 />
               ))}
-            {tab === "sign" &&
-              SIGNS.map((s) => (
-                <PaletteItem
-                  key={s.id}
-                  label={s.label}
-                  active={build?.sub === "sign" && build.variant === s.id}
-                  onClick={() => game.setTool({ kind: "build", sub: "sign", variant: s.id })}
-                />
-              ))}
-            {tab === "prop" && <PropPalette />}
+            {tab === "sign" && (
+              <CategoryPalette
+                catalogCat="Signs"
+                prefix={
+                  <div className="mb-2 flex flex-wrap gap-1.5">
+                    {SIGNS_BUILTIN.map((s) => (
+                      <PaletteItem
+                        key={s.id}
+                        label={s.label}
+                        active={build?.sub === "sign" && build.variant === s.id}
+                        onClick={() => game.setTool({ kind: "build", sub: "sign", variant: s.id })}
+                      />
+                    ))}
+                  </div>
+                }
+              />
+            )}
+            {current.source === "catalog" && (
+              <CategoryPalette catalogCat={(current as { catalogCat: string }).catalogCat} />
+            )}
             {tab === "settings" && <SettingsPanel />}
           </div>
         </div>
@@ -172,42 +206,56 @@ function PaletteItem({
   );
 }
 
-function PropPalette() {
+function CategoryPalette({
+  catalogCat,
+  prefix,
+}: {
+  catalogCat: string;
+  prefix?: React.ReactNode;
+}) {
   const game = useGame();
-  const [cat, setCat] = useState<string>(PROP_CATEGORIES[0]);
+  const subs = useMemo(() => getSubcategories(catalogCat), [catalogCat]);
+  const [sub, setSub] = useState<string>(subs[0] ?? "");
   const [q, setQ] = useState("");
   const build = game.tool.kind === "build" ? game.tool : null;
-  const items = PROP_CATALOG.filter(
-    (p) =>
-      p.category === cat &&
-      (q.trim() === "" || p.name.toLowerCase().includes(q.toLowerCase())),
+  const items = useMemo(
+    () =>
+      PROP_CATALOG.filter(
+        (p) =>
+          p.category === catalogCat &&
+          (q.trim() !== ""
+            ? p.name.toLowerCase().includes(q.toLowerCase())
+            : p.subcategory === sub),
+      ),
+    [catalogCat, sub, q],
   );
   return (
     <div className="flex w-full flex-col gap-2">
+      {prefix}
       <div className="flex items-center gap-2">
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder={`Search ${PROP_CATALOG.length} items…`}
-          className="flex-1 rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-sm text-white outline-none focus:border-white/40"
+          placeholder={`Search ${catalogCat}…`}
+          className="w-44 flex-shrink-0 rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-white outline-none focus:border-white/40"
         />
-        <div className="flex items-center gap-1 overflow-x-auto">
-          {PROP_CATEGORIES.map((c) => (
+        <div className="flex flex-1 items-center gap-1 overflow-x-auto">
+          {subs.map((c) => (
             <button
               key={c}
-              onClick={() => setCat(c)}
-              className={`whitespace-nowrap rounded-full border px-3 py-1 text-xs uppercase tracking-wider transition ${
-                cat === c
+              onClick={() => setSub(c)}
+              className={`whitespace-nowrap rounded-full border px-3 py-1 text-[11px] uppercase tracking-wider transition ${
+                sub === c && q.trim() === ""
                   ? "border-white/60 bg-white/15 text-white"
                   : "border-white/10 text-white/60 hover:bg-white/10"
               }`}
             >
-              {c}
+              📁 {c}
             </button>
           ))}
         </div>
       </div>
-      <div className="flex max-h-40 flex-wrap gap-1.5 overflow-y-auto pr-1">
+      <div className="flex max-h-32 flex-wrap gap-1.5 overflow-y-auto pr-1">
         {items.map((p) => {
           const on = build?.sub === "prop" && build.variant === p.id;
           return (

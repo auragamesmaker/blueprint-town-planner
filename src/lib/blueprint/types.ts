@@ -83,6 +83,7 @@ export type PropObj = {
   size: number;
   rotation: number;
   color?: string;
+  text?: string;
 };
 
 export type AnyObject =

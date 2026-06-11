@@ -127,8 +127,31 @@ function PropEditor({ prop }: { prop: PropObj }) {
   const game = useGame();
   const def = PROP_LOOKUP.get(prop.catalogId);
   const current = prop.color ?? def?.color ?? "#888888";
+  const supportsText =
+    def?.shape === "billboard" ||
+    def?.shape === "billboardLg" ||
+    def?.shape === "neonSign" ||
+    def?.shape === "marqueeSign" ||
+    def?.shape === "shopSign" ||
+    def?.shape === "directionSign" ||
+    def?.shape === "trafficSign" ||
+    def?.shape === "speedSign" ||
+    def?.shape === "milestoneSign";
   return (
     <div className="space-y-3">
+      {supportsText && (
+        <div>
+          <label className="block text-xs tracking-widest uppercase text-white/60 mb-1">
+            Sign text
+          </label>
+          <input
+            value={prop.text ?? ""}
+            onChange={(e) => game.updateObject(prop.id, { text: e.target.value })}
+            placeholder="Type to display…"
+            className="w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-white/40"
+          />
+        </div>
+      )}
       <label className="flex items-center justify-between text-sm">
         <span className="text-white/70">Color</span>
         <input
@@ -143,7 +166,7 @@ function PropEditor({ prop }: { prop: PropObj }) {
         <input
           type="range"
           min={6}
-          max={80}
+          max={140}
           step={1}
           value={prop.size}
           onChange={(e) =>
