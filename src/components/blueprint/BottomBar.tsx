@@ -172,7 +172,7 @@ export function BottomBar() {
                 }
               />
             )}
-            {current.source === "catalog" && current.id !== "settings" && (
+            {current.source === "catalog" && (
               <CategoryPalette catalogCat={(current as { catalogCat: string }).catalogCat} />
             )}
             {tab === "settings" && <SettingsPanel />}
