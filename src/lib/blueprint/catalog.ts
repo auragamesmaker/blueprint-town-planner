@@ -26,12 +26,23 @@ export type PropShape =
   | "pool" | "hotTub" | "trampoline" | "grill" | "firePit"
   | "swanBoat" | "lighthouse" | "buoy" | "anchor" | "dock"
   | "snowman" | "iglooSm" | "christmasTree" | "pumpkin" | "ghostDecor" | "lantern" | "torch"
-  | "vendingMachine" | "billboard" | "bench2" | "fountainSm" | "lampPost2" | "lampPost3";
+  | "vendingMachine" | "billboard" | "bench2" | "fountainSm" | "lampPost2" | "lampPost3"
+  | "skyscraper" | "skyscraperGlass" | "skyscraperArt" | "officeTower" | "condoTower"
+  | "stadium" | "arena" | "footballStadium" | "baseballStadium" | "tennisCourt"
+  | "basketballCourt" | "soccerField" | "trackField" | "iceRink"
+  | "billboardLg" | "marqueeSign" | "shopSign" | "directionSign" | "milestoneSign"
+  | "trafficSign" | "speedSign"
+  | "school" | "hospital" | "church" | "mosque" | "museum" | "mall" | "hotel"
+  | "gasStation" | "factory" | "warehouse" | "bank"
+  | "helicopter" | "limousine" | "convertible" | "hatchback" | "minivan"
+  | "garbageTruck" | "cementMixer" | "snowplow" | "rv"
+  | "carShadow";
 
 export type PropDef = {
   id: string;
   name: string;
   category: string;
+  subcategory: string;
   shape: PropShape;
   color: string;
   size: number; // base radius/scale
@@ -44,7 +55,8 @@ const mk = (
   shape: PropShape,
   color: string,
   size = 22,
-): PropDef => ({ id, name, category, shape, color, size });
+  subcategory?: string,
+): PropDef => ({ id, name, category, subcategory: subcategory ?? "General", shape, color, size });
 
 export const PROP_CATALOG: PropDef[] = [
   // ────────── Vehicles (30)
