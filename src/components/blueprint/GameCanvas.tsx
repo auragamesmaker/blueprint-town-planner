@@ -2168,11 +2168,378 @@ function drawShape(
       }
       return;
     }
+    case "skyscraper":
+    case "skyscraperGlass":
+    case "officeTower":
+    case "condoTower":
+    case "skyscraperArt": {
+      // Top-down: square footprint with rooftop details and window pattern
+      ctx.fillStyle = shade(color, -0.25);
+      roundRect(ctx, -s, -s, s * 2, s * 2, 4);
+      ctx.fill();
+      ctx.fillStyle = color;
+      roundRect(ctx, -s + 4, -s + 4, s * 2 - 8, s * 2 - 8, 3);
+      ctx.fill();
+      // window grid
+      const cols = 6, rows = 6;
+      const cw = (s * 2 - 16) / cols, rh = (s * 2 - 16) / rows;
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const lit = ((r * 13 + c * 7) % 5) > 1;
+          ctx.fillStyle = lit ? "rgba(220,235,255,0.85)" : "rgba(40,55,75,0.6)";
+          ctx.fillRect(-s + 10 + c * cw, -s + 10 + r * rh, cw - 2, rh - 2);
+        }
+      }
+      // rooftop
+      if (shape === "skyscraperArt") {
+        ctx.fillStyle = shade(color, 0.15);
+        ctx.beginPath();
+        ctx.moveTo(-s * 0.3, -s * 0.3);
+        ctx.lineTo(s * 0.3, -s * 0.3);
+        ctx.lineTo(0, -s * 0.8);
+        ctx.closePath(); ctx.fill();
+      } else if (shape === "officeTower" || shape === "skyscraper") {
+        ctx.fillStyle = "#3a3a3a";
+        roundRect(ctx, -s * 0.3, -s * 0.3, s * 0.6, s * 0.6, 2); ctx.fill();
+        ctx.fillStyle = "#c83a3a";
+        ctx.fillRect(-1, -s * 0.3, 2, s * 0.6);
+      }
+      return;
+    }
+    case "stadium":
+    case "arena":
+    case "footballStadium":
+    case "baseballStadium": {
+      // outer stand ring
+      ctx.fillStyle = shade(color, -0.2);
+      ctx.beginPath();
+      ctx.ellipse(0, 0, s, s * 0.75, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, s * 0.9, s * 0.65, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // field
+      ctx.fillStyle = shape === "baseballStadium" ? "#b48a4a" : "#2f7a3a";
+      if (shape === "baseballStadium") {
+        ctx.beginPath();
+        ctx.moveTo(0, s * 0.5);
+        ctx.lineTo(-s * 0.6, -s * 0.2);
+        ctx.lineTo(0, -s * 0.5);
+        ctx.lineTo(s * 0.6, -s * 0.2);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = "#2f7a3a";
+        ctx.beginPath();
+        ctx.arc(0, 0, s * 0.45, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        roundRect(ctx, -s * 0.65, -s * 0.4, s * 1.3, s * 0.8, 4);
+        ctx.fill();
+        // midfield line
+        ctx.strokeStyle = "rgba(255,255,255,0.85)";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(0, -s * 0.4); ctx.lineTo(0, s * 0.4);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(0, 0, s * 0.18, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      return;
+    }
+    case "tennisCourt": {
+      ctx.fillStyle = "#3a7a4a";
+      roundRect(ctx, -s, -s * 0.6, s * 2, s * 1.2, 4); ctx.fill();
+      ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.5;
+      ctx.strokeRect(-s + 8, -s * 0.6 + 8, s * 2 - 16, s * 1.2 - 16);
+      ctx.beginPath(); ctx.moveTo(0, -s * 0.6 + 8); ctx.lineTo(0, s * 0.6 - 8); ctx.stroke();
+      return;
+    }
+    case "basketballCourt": {
+      ctx.fillStyle = color;
+      roundRect(ctx, -s, -s * 0.6, s * 2, s * 1.2, 3); ctx.fill();
+      ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.5;
+      ctx.strokeRect(-s + 4, -s * 0.6 + 4, s * 2 - 8, s * 1.2 - 8);
+      ctx.beginPath(); ctx.arc(0, 0, s * 0.25, 0, Math.PI * 2); ctx.stroke();
+      return;
+    }
+    case "soccerField": {
+      ctx.fillStyle = "#2f7a3a";
+      roundRect(ctx, -s, -s * 0.6, s * 2, s * 1.2, 4); ctx.fill();
+      ctx.fillStyle = "#3a8a44";
+      for (let i = 0; i < 8; i++) {
+        if (i % 2 === 0) ctx.fillRect(-s + (i * (s / 4)), -s * 0.6, s / 4, s * 1.2);
+      }
+      ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.5;
+      ctx.strokeRect(-s + 6, -s * 0.6 + 6, s * 2 - 12, s * 1.2 - 12);
+      ctx.beginPath(); ctx.arc(0, 0, s * 0.18, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, -s * 0.6 + 6); ctx.lineTo(0, s * 0.6 - 6); ctx.stroke();
+      return;
+    }
+    case "trackField": {
+      ctx.fillStyle = "#a85a4a";
+      ctx.beginPath();
+      ctx.ellipse(0, 0, s, s * 0.55, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#2f7a3a";
+      ctx.beginPath();
+      ctx.ellipse(0, 0, s * 0.78, s * 0.4, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.5)";
+      ctx.beginPath();
+      ctx.ellipse(0, 0, s * 0.88, s * 0.48, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      return;
+    }
+    case "iceRink": {
+      ctx.fillStyle = "#9ac8e8";
+      roundRect(ctx, -s, -s * 0.6, s * 2, s * 1.2, s * 0.5); ctx.fill();
+      ctx.fillStyle = "#cfe6f1";
+      roundRect(ctx, -s + 4, -s * 0.6 + 4, s * 2 - 8, s * 1.2 - 8, s * 0.4); ctx.fill();
+      ctx.strokeStyle = "#c83a3a"; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(0, -s * 0.5); ctx.lineTo(0, s * 0.5); ctx.stroke();
+      return;
+    }
+    case "school":
+    case "hospital":
+    case "museum":
+    case "bank":
+    case "hotel":
+    case "mall":
+    case "warehouse":
+    case "factory": {
+      ctx.fillStyle = shade(color, -0.2);
+      roundRect(ctx, -s, -s * 0.75, s * 2, s * 1.5, 4); ctx.fill();
+      ctx.fillStyle = color;
+      roundRect(ctx, -s + 4, -s * 0.75 + 4, s * 2 - 8, s * 1.5 - 8, 3); ctx.fill();
+      // window rows
+      ctx.fillStyle = "rgba(220,235,255,0.85)";
+      for (let y = -s * 0.55; y < s * 0.55; y += 8) {
+        for (let x = -s + 12; x < s - 12; x += 10) {
+          ctx.fillRect(x, y, 6, 4);
+        }
+      }
+      // door
+      ctx.fillStyle = "#3a2a1a";
+      ctx.fillRect(-4, s * 0.55, 8, s * 0.2);
+      if (shape === "hospital") {
+        ctx.fillStyle = "#c83a3a";
+        ctx.fillRect(-2, -s * 0.4, 4, 12);
+        ctx.fillRect(-6, -s * 0.4 + 4, 12, 4);
+      } else if (shape === "factory") {
+        ctx.fillStyle = "#6a6a6a";
+        ctx.beginPath();
+        ctx.arc(s * 0.6, -s * 0.6, s * 0.18, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "rgba(180,180,180,0.6)";
+        ctx.beginPath();
+        ctx.ellipse(s * 0.6, -s * 0.8, s * 0.25, s * 0.12, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      return;
+    }
+    case "church":
+    case "mosque": {
+      ctx.fillStyle = shade(color, -0.2);
+      roundRect(ctx, -s, -s * 0.6, s * 2, s * 1.2, 4); ctx.fill();
+      ctx.fillStyle = color;
+      roundRect(ctx, -s + 4, -s * 0.6 + 4, s * 2 - 8, s * 1.2 - 8, 3); ctx.fill();
+      // dome / spire
+      ctx.fillStyle = shade(color, -0.35);
+      ctx.beginPath();
+      ctx.arc(0, 0, s * 0.35, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = shape === "church" ? "#c8b06a" : "#5aa86a";
+      if (shape === "church") {
+        ctx.fillRect(-1, -s * 0.6, 2, s * 0.4);
+        ctx.fillRect(-4, -s * 0.55, 8, 2);
+      } else {
+        ctx.fillRect(-1, -s * 0.6, 2, s * 0.3);
+        ctx.beginPath();
+        ctx.arc(0, -s * 0.6, 3, 0, Math.PI * 2); ctx.fill();
+      }
+      return;
+    }
+    case "gasStation": {
+      ctx.fillStyle = "#3a3a3a";
+      roundRect(ctx, -s, -s * 0.6, s * 2, s * 1.2, 3); ctx.fill();
+      ctx.fillStyle = color;
+      roundRect(ctx, -s + 6, -s * 0.6 + 6, s * 2 - 12, s * 1.2 - 12, 2); ctx.fill();
+      // pumps
+      ctx.fillStyle = "#c83a3a";
+      ctx.fillRect(-s * 0.5, -s * 0.1, 6, 10);
+      ctx.fillRect(s * 0.3, -s * 0.1, 6, 10);
+      ctx.fillStyle = "#fcd34d";
+      ctx.fillRect(-s + 10, s * 0.4, 12, 4);
+      return;
+    }
+    case "helicopter": {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, s * 0.7, s * 0.4, 0, 0, Math.PI * 2); ctx.fill();
+      // tail
+      ctx.fillRect(s * 0.5, -2, s * 0.9, 4);
+      ctx.fillStyle = "#3a3a3a";
+      ctx.fillRect(s * 1.3, -6, 2, 12);
+      // rotor (spinning)
+      const a = time * 30;
+      ctx.strokeStyle = "rgba(80,80,80,0.6)"; ctx.lineWidth = 2;
+      ctx.save(); ctx.rotate(a);
+      ctx.beginPath(); ctx.moveTo(-s, 0); ctx.lineTo(s, 0); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, -s); ctx.lineTo(0, s); ctx.stroke();
+      ctx.restore();
+      return;
+    }
+    case "limousine": {
+      const len = s * 2.4, wid = s * 0.85;
+      ctx.fillStyle = color;
+      roundRect(ctx, -len / 2, -wid / 2, len, wid, wid * 0.25); ctx.fill();
+      ctx.fillStyle = "rgba(120,170,210,0.7)";
+      roundRect(ctx, -len / 4, -wid / 2 + 2, len / 2, wid - 4, 2); ctx.fill();
+      ctx.fillStyle = "#1a1a1a";
+      for (const x of [-len / 2 + 4, -4, len / 2 - 10]) {
+        ctx.fillRect(x, -wid / 2 - 2, 6, 3);
+        ctx.fillRect(x, wid / 2 - 1, 6, 3);
+      }
+      return;
+    }
+    case "convertible":
+    case "hatchback":
+    case "minivan": {
+      const len = s * 1.7, wid = s * 0.9;
+      ctx.fillStyle = color;
+      roundRect(ctx, -len / 2, -wid / 2, len, wid, wid * 0.3); ctx.fill();
+      if (shape !== "convertible") {
+        ctx.fillStyle = "rgba(120,170,210,0.8)";
+        roundRect(ctx, -len / 3, -wid / 2 + 2, len / 1.5, wid - 4, 2); ctx.fill();
+      } else {
+        ctx.fillStyle = "rgba(80,50,30,0.55)";
+        roundRect(ctx, -len / 3, -wid / 2 + 2, len / 3, wid - 4, 2); ctx.fill();
+      }
+      ctx.fillStyle = "#1a1a1a";
+      ctx.fillRect(-len / 2 + 4, -wid / 2 - 2, 6, 3);
+      ctx.fillRect(-len / 2 + 4, wid / 2 - 1, 6, 3);
+      ctx.fillRect(len / 2 - 10, -wid / 2 - 2, 6, 3);
+      ctx.fillRect(len / 2 - 10, wid / 2 - 1, 6, 3);
+      return;
+    }
+    case "garbageTruck":
+    case "cementMixer":
+    case "snowplow":
+    case "rv": {
+      const len = s * 2.0, wid = s * 1.0;
+      ctx.fillStyle = color;
+      roundRect(ctx, -len / 2, -wid / 2, len, wid, 3); ctx.fill();
+      ctx.fillStyle = "rgba(120,170,210,0.7)";
+      roundRect(ctx, -len / 2 + 2, -wid / 2 + 2, len / 4, wid - 4, 2); ctx.fill();
+      if (shape === "cementMixer") {
+        ctx.fillStyle = shade(color, -0.3);
+        ctx.beginPath(); ctx.arc(len / 4, 0, wid * 0.5, 0, Math.PI * 2); ctx.fill();
+      } else if (shape === "snowplow") {
+        ctx.fillStyle = "#ffffff";
+        ctx.beginPath();
+        ctx.moveTo(-len / 2 - 6, -wid / 2 - 4);
+        ctx.lineTo(-len / 2, -wid / 2);
+        ctx.lineTo(-len / 2, wid / 2);
+        ctx.lineTo(-len / 2 - 6, wid / 2 + 4);
+        ctx.closePath(); ctx.fill();
+      } else if (shape === "garbageTruck") {
+        ctx.fillStyle = shade(color, -0.25);
+        roundRect(ctx, -len / 8, -wid / 2 + 2, len / 1.8, wid - 4, 2); ctx.fill();
+      }
+      ctx.fillStyle = "#1a1a1a";
+      ctx.fillRect(-len / 2 + 4, -wid / 2 - 2, 8, 3);
+      ctx.fillRect(-len / 2 + 4, wid / 2 - 1, 8, 3);
+      ctx.fillRect(len / 2 - 12, -wid / 2 - 2, 8, 3);
+      ctx.fillRect(len / 2 - 12, wid / 2 - 1, 8, 3);
+      return;
+    }
+    case "billboardLg": {
+      // posts
+      ctx.fillStyle = "#5a5a5a";
+      ctx.fillRect(-s * 0.6, s * 0.3, 4, s * 0.5);
+      ctx.fillRect(s * 0.6 - 4, s * 0.3, 4, s * 0.5);
+      // panel
+      ctx.fillStyle = shade(color, -0.25);
+      roundRect(ctx, -s, -s * 0.7, s * 2, s, 3); ctx.fill();
+      ctx.fillStyle = color;
+      roundRect(ctx, -s + 4, -s * 0.7 + 4, s * 2 - 8, s - 8, 2); ctx.fill();
+      if (text) {
+        ctx.fillStyle = isDark(color) ? "#fff" : "#1a1a1a";
+        ctx.font = `bold ${Math.max(10, s * 0.34)}px sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(text.slice(0, 18), 0, -s * 0.2);
+      } else {
+        ctx.fillStyle = "rgba(0,0,0,0.25)";
+        ctx.font = `italic ${Math.max(9, s * 0.3)}px sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("Your Ad Here", 0, -s * 0.2);
+      }
+      return;
+    }
+    case "marqueeSign":
+    case "shopSign": {
+      ctx.fillStyle = shade(color, -0.3);
+      roundRect(ctx, -s, -s * 0.4, s * 2, s * 0.8, 4); ctx.fill();
+      ctx.fillStyle = color;
+      roundRect(ctx, -s + 3, -s * 0.4 + 3, s * 2 - 6, s * 0.8 - 6, 3); ctx.fill();
+      // bulb edge
+      ctx.fillStyle = "#fcd34d";
+      for (let i = -s + 6; i < s - 4; i += 8) {
+        ctx.beginPath(); ctx.arc(i, -s * 0.4 + 1, 1.5, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(i, s * 0.4 - 1, 1.5, 0, Math.PI * 2); ctx.fill();
+      }
+      if (text) {
+        ctx.fillStyle = isDark(color) ? "#fff" : "#222";
+        ctx.font = `bold ${Math.max(8, s * 0.32)}px serif`;
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText(text.slice(0, 14), 0, 0);
+      }
+      return;
+    }
+    case "directionSign":
+    case "trafficSign":
+    case "speedSign":
+    case "milestoneSign": {
+      ctx.fillStyle = "#5a5a5a";
+      ctx.fillRect(-1, 0, 2, s * 0.8);
+      if (shape === "trafficSign") {
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(0, -s * 0.7);
+        ctx.lineTo(s * 0.6, 0);
+        ctx.lineTo(0, s * 0.2);
+        ctx.lineTo(-s * 0.6, 0);
+        ctx.closePath(); ctx.fill();
+      } else {
+        ctx.fillStyle = color;
+        roundRect(ctx, -s * 0.7, -s * 0.7, s * 1.4, s * 0.8, 2); ctx.fill();
+        ctx.strokeStyle = "#222"; ctx.strokeRect(-s * 0.7, -s * 0.7, s * 1.4, s * 0.8);
+      }
+      if (text) {
+        ctx.fillStyle = isDark(color) ? "#fff" : "#222";
+        ctx.font = `bold ${Math.max(8, s * 0.5)}px sans-serif`;
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText(text.slice(0, 8), 0, -s * 0.3);
+      }
+      return;
+    }
+    case "carShadow":
     default: {
       ctx.fillStyle = color;
       ctx.beginPath(); ctx.arc(0, 0, s * 0.7, 0, Math.PI * 2); ctx.fill();
     }
   }
+}
+
+function isDark(hex: string): boolean {
+  const c = hex.replace("#", "");
+  if (c.length < 6) return false;
+  const r = parseInt(c.slice(0, 2), 16);
+  const g = parseInt(c.slice(2, 4), 16);
+  const b = parseInt(c.slice(4, 6), 16);
+  return r * 0.299 + g * 0.587 + b * 0.114 < 128;
 }
 
 function roundRect(
