@@ -1157,7 +1157,7 @@ function drawProp(
   ctx.beginPath();
   ctx.ellipse(2, 3, p.size * 0.8, p.size * 0.45, 0, 0, Math.PI * 2);
   ctx.fill();
-  drawShape(ctx, def.shape, p.size, color, time);
+  drawShape(ctx, def.shape, p.size, color, time, p.text);
   if (selected) {
     ctx.strokeStyle = "#fff";
     ctx.lineWidth = 2;
@@ -1176,6 +1176,7 @@ function drawShape(
   s: number,
   color: string,
   time: number,
+  text?: string,
 ) {
   // helper: vehicle body
   const carBody = (length: number, width: number, body: string, accent = "#1a1a1a") => {
@@ -1417,6 +1418,13 @@ function drawShape(
       ctx.fill();
       ctx.strokeStyle = "rgba(255,255,255,0.6)";
       ctx.strokeRect(-s + 3, -s * 0.6 + 3, s * 2 - 6, s * 1.2 - 6);
+      if (text) {
+        ctx.fillStyle = shape === "neonSign" ? "#fff" : "#1a1a1a";
+        ctx.font = `bold ${Math.max(8, s * 0.32)}px sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(text.slice(0, 14), 0, 0);
+      }
       return;
     }
     case "trafficCone": {
