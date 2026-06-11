@@ -171,7 +171,12 @@ export function GameCanvas() {
       game.select(hit.id);
       if (hit.kind === "roadDecal") {
         movingRef.current = { kind: "decal", id: hit.id };
-      } else if (hit.kind === "building" || hit.kind === "nature" || hit.kind === "sign") {
+      } else if (
+        hit.kind === "building" ||
+        hit.kind === "nature" ||
+        hit.kind === "sign" ||
+        hit.kind === "prop"
+      ) {
         const pos = hit.pos;
         movingRef.current = {
           kind: "obj",
