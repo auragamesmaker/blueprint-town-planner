@@ -289,6 +289,254 @@ export const PROP_CATALOG: PropDef[] = [
   mk("x-pallet-stack",   "Pallet Stack",     "Industrial","pallet",     "#7a5a3a", 14),
 ];
 
+// ─────────── Subcategory derivation + recategorization ───────────
+// Move trees/flowers/rocks/walls into a single "Nature" top-level category.
+const SHAPE_SUB: Partial<Record<PropShape, { cat: string; sub: string }>> = {
+  // Nature
+  pineTree: { cat: "Nature", sub: "Trees" },
+  oakTree: { cat: "Nature", sub: "Trees" },
+  palmTree: { cat: "Nature", sub: "Trees" },
+  willowTree: { cat: "Nature", sub: "Trees" },
+  mapleTree: { cat: "Nature", sub: "Trees" },
+  cherryTree: { cat: "Nature", sub: "Trees" },
+  birchTree: { cat: "Nature", sub: "Trees" },
+  spruceTree: { cat: "Nature", sub: "Trees" },
+  appleTree: { cat: "Nature", sub: "Trees" },
+  deadTree: { cat: "Nature", sub: "Trees" },
+  topiary: { cat: "Nature", sub: "Bushes" },
+  hedge: { cat: "Nature", sub: "Bushes" },
+  log: { cat: "Nature", sub: "Wood" },
+  stump: { cat: "Nature", sub: "Wood" },
+  rose: { cat: "Nature", sub: "Flowers" },
+  tulip: { cat: "Nature", sub: "Flowers" },
+  sunflower: { cat: "Nature", sub: "Flowers" },
+  daisy: { cat: "Nature", sub: "Flowers" },
+  lavender: { cat: "Nature", sub: "Flowers" },
+  lily: { cat: "Nature", sub: "Flowers" },
+  poppy: { cat: "Nature", sub: "Flowers" },
+  iris: { cat: "Nature", sub: "Flowers" },
+  hydrangea: { cat: "Nature", sub: "Flowers" },
+  cactus: { cat: "Nature", sub: "Flowers" },
+  marigold: { cat: "Nature", sub: "Flowers" },
+  orchid: { cat: "Nature", sub: "Flowers" },
+  violets: { cat: "Nature", sub: "Flowers" },
+  dandelion: { cat: "Nature", sub: "Flowers" },
+  rock: { cat: "Nature", sub: "Rocks" },
+  boulder: { cat: "Nature", sub: "Rocks" },
+  pebbles: { cat: "Nature", sub: "Rocks" },
+  // Vehicles subgroups
+  sedan: { cat: "Vehicles", sub: "Cars" },
+  suv: { cat: "Vehicles", sub: "Cars" },
+  sportsCar: { cat: "Vehicles", sub: "Cars" },
+  taxi: { cat: "Vehicles", sub: "Cars" },
+  pickup: { cat: "Vehicles", sub: "Cars" },
+  van: { cat: "Vehicles", sub: "Cars" },
+  policeCar: { cat: "Vehicles", sub: "Service" },
+  ambulance: { cat: "Vehicles", sub: "Service" },
+  fireTruck: { cat: "Vehicles", sub: "Service" },
+  bus: { cat: "Vehicles", sub: "Buses" },
+  schoolBus: { cat: "Vehicles", sub: "Buses" },
+  foodTruck: { cat: "Vehicles", sub: "Trucks" },
+  boxTruck: { cat: "Vehicles", sub: "Trucks" },
+  tanker: { cat: "Vehicles", sub: "Trucks" },
+  trailer: { cat: "Vehicles", sub: "Trucks" },
+  tractor: { cat: "Vehicles", sub: "Trucks" },
+  bike: { cat: "Vehicles", sub: "Bikes" },
+  motorcycle: { cat: "Vehicles", sub: "Bikes" },
+  scooter: { cat: "Vehicles", sub: "Bikes" },
+  boat: { cat: "Vehicles", sub: "Boats" },
+  rowboat: { cat: "Vehicles", sub: "Boats" },
+  swanBoat: { cat: "Vehicles", sub: "Boats" },
+  // Street
+  streetLamp: { cat: "Street", sub: "Lighting" },
+  lampPost2: { cat: "Street", sub: "Lighting" },
+  lampPost3: { cat: "Street", sub: "Lighting" },
+  gardenLight: { cat: "Street", sub: "Lighting" },
+  floodLight: { cat: "Street", sub: "Lighting" },
+  bench: { cat: "Street", sub: "Furniture" },
+  bench2: { cat: "Street", sub: "Furniture" },
+  picnicTable: { cat: "Street", sub: "Furniture" },
+  outdoorTable: { cat: "Street", sub: "Furniture" },
+  outdoorChair: { cat: "Street", sub: "Furniture" },
+  loungeChair: { cat: "Street", sub: "Furniture" },
+  trashCan: { cat: "Street", sub: "Bins" },
+  recycleBin: { cat: "Street", sub: "Bins" },
+  dumpster: { cat: "Street", sub: "Bins" },
+  mailbox: { cat: "Street", sub: "Utility" },
+  hydrant: { cat: "Street", sub: "Utility" },
+  phoneBooth: { cat: "Street", sub: "Utility" },
+  atm: { cat: "Street", sub: "Utility" },
+  kiosk: { cat: "Street", sub: "Utility" },
+  busStop: { cat: "Street", sub: "Utility" },
+  bikeRack: { cat: "Street", sub: "Utility" },
+  parkingMeter: { cat: "Street", sub: "Utility" },
+  trafficCone: { cat: "Street", sub: "Traffic" },
+  // Walls
+  fence: { cat: "Walls", sub: "Fences" },
+  brickWall: { cat: "Walls", sub: "Walls" },
+  lowWall: { cat: "Walls", sub: "Walls" },
+  chainLink: { cat: "Walls", sub: "Fences" },
+  ironGate: { cat: "Walls", sub: "Gates" },
+  // Park
+  fountain: { cat: "Park", sub: "Decor" },
+  fountainSm: { cat: "Park", sub: "Decor" },
+  statue: { cat: "Park", sub: "Decor" },
+  gazebo: { cat: "Park", sub: "Structures" },
+  pergola: { cat: "Park", sub: "Structures" },
+  bandstand: { cat: "Park", sub: "Structures" },
+  tent: { cat: "Park", sub: "Structures" },
+  umbrella: { cat: "Park", sub: "Decor" },
+  swingSet: { cat: "Park", sub: "Playground" },
+  slide: { cat: "Park", sub: "Playground" },
+  seesaw: { cat: "Park", sub: "Playground" },
+  sandbox: { cat: "Park", sub: "Playground" },
+  monkeyBars: { cat: "Park", sub: "Playground" },
+  merryGoRound: { cat: "Park", sub: "Playground" },
+  trampoline: { cat: "Park", sub: "Playground" },
+  grill: { cat: "Park", sub: "Decor" },
+  firePit: { cat: "Park", sub: "Decor" },
+  pool: { cat: "Park", sub: "Water" },
+  hotTub: { cat: "Park", sub: "Water" },
+  // Sports
+  basketballHoop: { cat: "Sports", sub: "Equipment" },
+  soccerGoal: { cat: "Sports", sub: "Equipment" },
+  footballGoal: { cat: "Sports", sub: "Equipment" },
+  tennisNet: { cat: "Sports", sub: "Equipment" },
+  baseballBase: { cat: "Sports", sub: "Equipment" },
+  pingPongTable: { cat: "Sports", sub: "Equipment" },
+  skateRamp: { cat: "Sports", sub: "Equipment" },
+  // Farm
+  haystack: { cat: "Farm", sub: "Crops" },
+  scarecrow: { cat: "Farm", sub: "Crops" },
+  pumpkin: { cat: "Farm", sub: "Crops" },
+  barrel: { cat: "Farm", sub: "Tools" },
+  well: { cat: "Farm", sub: "Structures" },
+  windmill: { cat: "Farm", sub: "Structures" },
+  silo: { cat: "Farm", sub: "Structures" },
+  barn: { cat: "Farm", sub: "Structures" },
+  chickenCoop: { cat: "Farm", sub: "Structures" },
+  // Beach
+  sandcastle: { cat: "Beach", sub: "Sand" },
+  beachChair: { cat: "Beach", sub: "Lounge" },
+  surfboard: { cat: "Beach", sub: "Sport" },
+  beachTowel: { cat: "Beach", sub: "Lounge" },
+  lifebuoy: { cat: "Beach", sub: "Sport" },
+  buoy: { cat: "Beach", sub: "Water" },
+  anchor: { cat: "Beach", sub: "Water" },
+  lighthouse: { cat: "Beach", sub: "Structures" },
+  dock: { cat: "Beach", sub: "Structures" },
+  // Industrial
+  crate: { cat: "Industrial", sub: "Cargo" },
+  pallet: { cat: "Industrial", sub: "Cargo" },
+  constructionSign: { cat: "Industrial", sub: "Construction" },
+  barricade: { cat: "Industrial", sub: "Construction" },
+  scaffold: { cat: "Industrial", sub: "Construction" },
+  portaPotty: { cat: "Industrial", sub: "Construction" },
+  antenna: { cat: "Industrial", sub: "Tech" },
+  satelliteDish: { cat: "Industrial", sub: "Tech" },
+  solarPanel: { cat: "Industrial", sub: "Tech" },
+  windTurbine: { cat: "Industrial", sub: "Tech" },
+  vendingMachine: { cat: "Industrial", sub: "Utility" },
+  billboard: { cat: "Signs", sub: "Billboards" },
+  neonSign: { cat: "Signs", sub: "Neon" },
+  // Decor seasonal
+  snowman: { cat: "Decor", sub: "Winter" },
+  iglooSm: { cat: "Decor", sub: "Winter" },
+  christmasTree: { cat: "Decor", sub: "Winter" },
+  ghostDecor: { cat: "Decor", sub: "Halloween" },
+  lantern: { cat: "Decor", sub: "Lighting" },
+  torch: { cat: "Decor", sub: "Lighting" },
+  flagpole: { cat: "Decor", sub: "Flags" },
+};
+
+// Apply remap
+for (const p of PROP_CATALOG) {
+  const m = SHAPE_SUB[p.shape];
+  if (m) {
+    p.category = m.cat;
+    p.subcategory = m.sub;
+  } else {
+    p.subcategory = p.subcategory ?? "General";
+  }
+}
+
+// ─────────── New items: Buildings (skyscrapers/civic/sports), Signs, more vehicles ───────────
+const EXTRA: PropDef[] = [
+  // Skyscrapers
+  mk("bld-sky-1",     "Glass Skyscraper",    "Buildings", "skyscraperGlass", "#5a8fb8", 70, "Skyscrapers"),
+  mk("bld-sky-2",     "Office Tower",        "Buildings", "officeTower",     "#7a8a9a", 65, "Skyscrapers"),
+  mk("bld-sky-3",     "Condo Tower",         "Buildings", "condoTower",      "#c8b89a", 60, "Skyscrapers"),
+  mk("bld-sky-4",     "Art Deco Skyscraper", "Buildings", "skyscraperArt",   "#b8a878", 72, "Skyscrapers"),
+  mk("bld-sky-5",     "Steel Skyscraper",    "Buildings", "skyscraper",      "#6a7a8a", 80, "Skyscrapers"),
+  mk("bld-sky-6",     "Black Tower",         "Buildings", "skyscraperGlass", "#1a2230", 78, "Skyscrapers"),
+  mk("bld-sky-7",     "Mirror Tower",        "Buildings", "skyscraperGlass", "#9ac8e8", 68, "Skyscrapers"),
+  mk("bld-sky-8",     "Twin Tower A",        "Buildings", "officeTower",     "#5a6878", 90, "Skyscrapers"),
+  mk("bld-sky-9",     "Twin Tower B",        "Buildings", "officeTower",     "#5a6878", 90, "Skyscrapers"),
+  mk("bld-sky-10",    "Pyramid Tower",       "Buildings", "skyscraperArt",   "#9aa8b8", 75, "Skyscrapers"),
+  // Civic
+  mk("bld-school",    "School",              "Buildings", "school",      "#d6b88a", 70, "Civic"),
+  mk("bld-hospital",  "Hospital",            "Buildings", "hospital",    "#eaeaea", 75, "Civic"),
+  mk("bld-church",    "Church",              "Buildings", "church",      "#d8d0c4", 60, "Civic"),
+  mk("bld-mosque",    "Mosque",              "Buildings", "mosque",      "#e6dec8", 60, "Civic"),
+  mk("bld-museum",    "Museum",              "Buildings", "museum",      "#ccc4b4", 70, "Civic"),
+  mk("bld-bank",      "Bank",                "Buildings", "bank",        "#d4c8a8", 55, "Civic"),
+  // Commercial
+  mk("bld-mall",      "Shopping Mall",       "Buildings", "mall",        "#c8b4a4", 90, "Commercial"),
+  mk("bld-hotel",     "Hotel",               "Buildings", "hotel",       "#a8b4c4", 65, "Commercial"),
+  mk("bld-gas",       "Gas Station",         "Buildings", "gasStation",  "#d4d4d4", 50, "Commercial"),
+  // Industrial
+  mk("bld-factory",   "Factory",             "Buildings", "factory",     "#9a9a9a", 80, "Industrial"),
+  mk("bld-warehouse", "Warehouse",           "Buildings", "warehouse",   "#b8b0a4", 75, "Industrial"),
+  // Sports arenas
+  mk("bld-stadium",   "Football Stadium",    "Buildings", "footballStadium", "#3a7a3a", 110, "Arenas"),
+  mk("bld-baseball",  "Baseball Stadium",    "Buildings", "baseballStadium", "#5a8a4a", 105, "Arenas"),
+  mk("bld-arena",     "Indoor Arena",        "Buildings", "arena",        "#8a8a9a", 95, "Arenas"),
+  mk("bld-stadium-g", "Sports Stadium",      "Buildings", "stadium",      "#a8a098", 100, "Arenas"),
+  mk("bld-tennis",    "Tennis Court",        "Buildings", "tennisCourt",  "#3a7a4a", 60, "Arenas"),
+  mk("bld-bball-c",   "Basketball Court",    "Buildings", "basketballCourt", "#a87a4a", 55, "Arenas"),
+  mk("bld-soccer-f",  "Soccer Field",        "Buildings", "soccerField",  "#2f7a3a", 95, "Arenas"),
+  mk("bld-track",     "Track & Field",       "Buildings", "trackField",   "#a85a4a", 90, "Arenas"),
+  mk("bld-rink",      "Ice Rink",            "Buildings", "iceRink",      "#cfe6f1", 70, "Arenas"),
+  // Signs
+  mk("sig-billboard-lg", "Large Billboard",   "Signs", "billboardLg",   "#ffffff", 36, "Billboards"),
+  mk("sig-billboard-2",  "Highway Billboard", "Signs", "billboardLg",   "#f0e8d8", 40, "Billboards"),
+  mk("sig-billboard-3",  "Digital Billboard", "Signs", "billboardLg",   "#1a1a2a", 36, "Billboards"),
+  mk("sig-marquee",      "Marquee Sign",      "Signs", "marqueeSign",   "#e8d870", 26, "Storefront"),
+  mk("sig-shop",         "Shop Sign",         "Signs", "shopSign",      "#c83a3a", 22, "Storefront"),
+  mk("sig-neon-1",       "Neon Sign Red",     "Signs", "neonSign",      "#ff3a8a", 22, "Neon"),
+  mk("sig-neon-2",       "Neon Sign Blue",    "Signs", "neonSign",      "#3aa8ff", 22, "Neon"),
+  mk("sig-neon-3",       "Neon Sign Green",   "Signs", "neonSign",      "#3aff8a", 22, "Neon"),
+  mk("sig-direction",    "Direction Sign",    "Signs", "directionSign", "#3a7a3a", 18, "Traffic"),
+  mk("sig-milestone",    "Mile Marker",       "Signs", "milestoneSign", "#ececec", 14, "Traffic"),
+  mk("sig-speed-25",     "Speed Limit 25",    "Signs", "speedSign",     "#ffffff", 14, "Traffic"),
+  mk("sig-speed-45",     "Speed Limit 45",    "Signs", "speedSign",     "#ffffff", 14, "Traffic"),
+  mk("sig-yield",        "Yield Sign",        "Signs", "trafficSign",   "#ff0000", 14, "Traffic"),
+  mk("sig-noparking",    "No Parking",        "Signs", "trafficSign",   "#ffffff", 14, "Traffic"),
+  // More vehicles
+  mk("v-helicopter",  "Helicopter",     "Vehicles", "helicopter",  "#2a2a2a", 28, "Air"),
+  mk("v-limo",        "Limousine",      "Vehicles", "limousine",   "#1a1a1c", 32, "Cars"),
+  mk("v-convertible", "Convertible",    "Vehicles", "convertible", "#c8334d", 22, "Cars"),
+  mk("v-hatchback",   "Hatchback",      "Vehicles", "hatchback",   "#3a85d8", 20, "Cars"),
+  mk("v-minivan",     "Minivan",        "Vehicles", "minivan",     "#a8a098", 26, "Cars"),
+  mk("v-garbage",     "Garbage Truck",  "Vehicles", "garbageTruck", "#3a7a3a", 32, "Service"),
+  mk("v-cement",      "Cement Mixer",   "Vehicles", "cementMixer", "#d4a83a", 30, "Trucks"),
+  mk("v-snowplow",    "Snowplow",       "Vehicles", "snowplow",    "#e8a020", 28, "Service"),
+  mk("v-rv",          "RV Camper",      "Vehicles", "rv",          "#ececec", 34, "Trucks"),
+];
+
+PROP_CATALOG.push(...EXTRA);
+
+// Re-sort by category for stable UI
+PROP_CATALOG.sort((a, b) => a.category.localeCompare(b.category));
+
 export const PROP_CATEGORIES = Array.from(
   new Set(PROP_CATALOG.map((p) => p.category)),
 );
+
+export function getSubcategories(category: string): string[] {
+  return Array.from(
+    new Set(
+      PROP_CATALOG.filter((p) => p.category === category).map((p) => p.subcategory),
+    ),
+  );
+}
