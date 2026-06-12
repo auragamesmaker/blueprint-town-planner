@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { GameCanvas } from "@/components/blueprint/GameCanvas";
+import { GameCanvas3D } from "@/components/blueprint/GameCanvas3D";
 import { SidePanel } from "@/components/blueprint/SidePanel";
 import { BottomBar } from "@/components/blueprint/BottomBar";
 import { TownMap } from "@/components/blueprint/TownMap";
@@ -45,7 +45,7 @@ function PlayPage() {
 
   return (
     <main className="relative h-screen w-screen overflow-hidden bg-[#9bbf8a]">
-      <GameCanvas />
+      <GameCanvas3D />
       <WeatherOverlay />
 
       {/* Top-left: title + home */}
@@ -70,7 +70,7 @@ function PlayPage() {
 
       {/* hint */}
       <div className="pointer-events-none absolute bottom-44 left-1/2 z-20 -translate-x-1/2 rounded-full bg-black/40 px-4 py-1.5 text-xs text-white/70 backdrop-blur-md">
-        Shift+drag pan · Scroll zoom · Ctrl+drag box-select · R rotate · Del delete · Esc cancel
+        Left-drag pan · Right-drag rotate · Scroll zoom · R rotate selection · Del delete · Esc cancel
       </div>
     </main>
   );
