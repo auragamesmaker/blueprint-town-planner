@@ -1,8 +1,12 @@
-import { useMemo } from "react";
+import { useEffect, useState } from "react";
+
+type Petal = { id: number; left: number; drift: number; delay: number; dur: number; size: number; opacity: number };
 
 export function SakuraPetals({ count = 40 }: { count?: number }) {
-  const petals = useMemo(
-    () =>
+  // Render only after mount — avoids SSR/client hydration mismatch from Math.random().
+  const [petals, setPetals] = useState<Petal[] | null>(null);
+  useEffect(() => {
+    setPetals(
       Array.from({ length: count }).map((_, i) => ({
         id: i,
         left: Math.random() * 100,
@@ -12,8 +16,9 @@ export function SakuraPetals({ count = 40 }: { count?: number }) {
         size: 10 + Math.random() * 14,
         opacity: 0.6 + Math.random() * 0.4,
       })),
-    [count],
-  );
+    );
+  }, [count]);
+  if (!petals) return null;
   return (
     <div className="pointer-events-none fixed inset-0 overflow-hidden">
       {petals.map((p) => (
