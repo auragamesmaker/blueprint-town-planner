@@ -92,6 +92,9 @@ export function GameCanvas3D() {
         dpr={[1, 2]}
         gl={{ antialias: true, powerPreference: "high-performance" }}
         camera={{ position: [600, 600, 600], fov: 45, near: 1, far: 8000 }}
+        onCreated={(s) => {
+          (window as any).__bp_three = { camera: s.camera, gl: s.gl, scene: s.scene };
+        }}
       >
         <Suspense fallback={null}>
           <Scene />
@@ -177,7 +180,7 @@ function CameraControls() {
       minDistance={80}
       maxDistance={3000}
       mouseButtons={{
-        LEFT: enabled ? THREE.MOUSE.PAN : -1,
+        LEFT: enabled ? THREE.MOUSE.PAN : undefined,
         MIDDLE: THREE.MOUSE.DOLLY,
         RIGHT: THREE.MOUSE.ROTATE,
       }}
@@ -1335,7 +1338,7 @@ function PropMesh({ shape, color, size }: { shape: string; color: string; size: 
           </mesh>
           <mesh position={[0, size * 1.5, 0]} castShadow>
             <boxGeometry args={[size * 1.6, size * 0.8, 1.5]} />
-            <meshStandardMaterial color={color} emissive={shape === "neonSign" ? color : "#000"} emissiveIntensity={shape === "neonSign" ? 1.3 : 0} />
+            <meshStandardMaterial color={color} />
           </mesh>
         </group>
       );
