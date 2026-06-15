@@ -133,24 +133,22 @@ function Scene() {
         intensity={1.4 * nightFactor}
         color={nightFactor < 0.5 ? "#7a8fbf" : "#fff4d6"}
         castShadow
-        shadow-mapSize={[2048, 2048]}
-        shadow-camera-left={-1500}
-        shadow-camera-right={1500}
-        shadow-camera-top={1500}
-        shadow-camera-bottom={-1500}
+        shadow-mapSize={[1024, 1024]}
+        shadow-camera-left={-1200}
+        shadow-camera-right={1200}
+        shadow-camera-top={1200}
+        shadow-camera-bottom={-1200}
         shadow-camera-near={1}
-        shadow-camera-far={4000}
+        shadow-camera-far={3000}
         shadow-bias={-0.0005}
       />
 
       {nightFactor > 0.5 && <Sky sunPosition={sun.toArray()} turbidity={6} rayleigh={1.4} mieCoefficient={0.005} />}
-      <Environment preset="city" />
 
       {nightFactor > 0.5 && (
-        <Clouds material={THREE.MeshLambertMaterial} limit={20}>
-          <Cloud seed={1} segments={20} bounds={[400, 80, 400]} volume={120} position={[200, 700, -300]} color="#ffffff" opacity={0.6} />
-          <Cloud seed={2} segments={20} bounds={[400, 80, 400]} volume={120} position={[-600, 600, 400]} color="#ffffff" opacity={0.5} />
-          <Cloud seed={3} segments={20} bounds={[400, 80, 400]} volume={120} position={[800, 650, 800]} color="#ffffff" opacity={0.55} />
+        <Clouds material={THREE.MeshLambertMaterial} limit={6}>
+          <Cloud seed={1} segments={8} bounds={[400, 60, 400]} volume={80} position={[200, 700, -300]} color="#ffffff" opacity={0.55} />
+          <Cloud seed={2} segments={8} bounds={[400, 60, 400]} volume={80} position={[-600, 600, 400]} color="#ffffff" opacity={0.45} />
         </Clouds>
       )}
 
