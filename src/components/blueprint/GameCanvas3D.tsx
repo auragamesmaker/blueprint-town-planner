@@ -472,35 +472,49 @@ function Building3D({ obj }: { obj: Building }) {
 function WindowStrips({ width, depth, height }: { width: number; depth: number; height: number }) {
   const timeOfDay = useGame((s) => s.city.timeOfDay);
   const isNight = timeOfDay < 6 || timeOfDay > 19;
-  const rows = Math.max(1, Math.floor(height / 14));
-  const cols = Math.max(1, Math.floor(width / 14));
-  const items = [];
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const x = -width / 2 + (c + 0.5) * (width / cols);
-      const y = 6 + r * 14;
-      const lit = isNight && Math.random() > 0.4;
-      items.push(
-        <mesh key={`f-${r}-${c}`} position={[x, y, depth / 2 + 0.1]}>
-          <planeGeometry args={[8, 8]} />
-          <meshStandardMaterial
-            color={lit ? "#ffe9a8" : "#2a3a4a"}
-            emissive={lit ? "#ffd070" : "#000"}
-            emissiveIntensity={lit ? 1.5 : 0}
-          />
-        </mesh>,
-        <mesh key={`b-${r}-${c}`} position={[x, y, -depth / 2 - 0.1]} rotation={[0, Math.PI, 0]}>
-          <planeGeometry args={[8, 8]} />
-          <meshStandardMaterial
-            color={lit ? "#ffe9a8" : "#2a3a4a"}
-            emissive={lit ? "#ffd070" : "#000"}
-            emissiveIntensity={lit ? 1.5 : 0}
-          />
-        </mesh>,
-      );
-    }
-  }
-  return <>{items}</>;
+  // Bake the entire window grid into one canvas texture per (w,h) — one
+  // draw call per face instead of hundreds.
+  const { texDay, texNight } = useMemo(() => {
+    const cols = Math.max(1, Math.min(16, Math.floor(width / 18)));
+    const rows = Math.max(1, Math.min(16, Math.floor(height / 18)));
+    const make = (lit: boolean) => {
+      const c = document.createElement("canvas");
+      c.width = 256;
+      c.height = 256;
+      const g = c.getContext("2d")!;
+      g.fillStyle = "rgba(0,0,0,0)";
+      g.clearRect(0, 0, 256, 256);
+      const cw = 256 / cols;
+      const rh = 256 / rows;
+      for (let r = 0; r < rows; r++) {
+        for (let cc = 0; cc < cols; cc++) {
+          // deterministic pseudo-random per cell
+          const seed = Math.sin(r * 12.9898 + cc * 78.233) * 43758.5453;
+          const on = lit && (seed - Math.floor(seed)) > 0.45;
+          g.fillStyle = on ? "#ffd97a" : "#2a3a4a";
+          g.fillRect(cc * cw + 2, r * rh + 2, cw - 4, rh - 4);
+        }
+      }
+      const t = new THREE.CanvasTexture(c);
+      t.anisotropy = 4;
+      return t;
+    };
+    return { texDay: make(false), texNight: make(true) };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [Math.round(width / 10), Math.round(height / 10)]);
+  const tex = isNight ? texNight : texDay;
+  return (
+    <>
+      <mesh position={[0, height / 2, depth / 2 + 0.1]}>
+        <planeGeometry args={[width * 0.9, height * 0.85]} />
+        <meshStandardMaterial map={tex} emissiveMap={isNight ? tex : null} emissive={isNight ? "#ffb060" : "#000"} emissiveIntensity={isNight ? 1.2 : 0} />
+      </mesh>
+      <mesh position={[0, height / 2, -depth / 2 - 0.1]} rotation={[0, Math.PI, 0]}>
+        <planeGeometry args={[width * 0.9, height * 0.85]} />
+        <meshStandardMaterial map={tex} emissiveMap={isNight ? tex : null} emissive={isNight ? "#ffb060" : "#000"} emissiveIntensity={isNight ? 1.2 : 0} />
+      </mesh>
+    </>
+  );
 }
 
 /* ─────────────── Nature ─────────────── */
