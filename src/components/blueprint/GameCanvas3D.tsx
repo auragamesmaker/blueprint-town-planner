@@ -89,7 +89,7 @@ export function GameCanvas3D() {
     <div className="absolute inset-0">
       <Canvas
         shadows
-        dpr={[1, 2]}
+        dpr={[1, 1.5]}
         gl={{ antialias: true, powerPreference: "high-performance" }}
         camera={{ position: [600, 600, 600], fov: 45, near: 1, far: 8000 }}
         onCreated={(s) => {
