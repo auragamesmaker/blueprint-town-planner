@@ -167,10 +167,64 @@ function Scene() {
 
 function CameraControls() {
   const tool = useGame((s) => s.tool);
+  const controlsRef = useRef<any>(null);
+  const { camera } = useThree();
+  const keys = useRef<Record<string, boolean>>({});
+
+  useEffect(() => {
+    const isTyping = (el: EventTarget | null) => {
+      const n = el as HTMLElement | null;
+      if (!n) return false;
+      const tag = n.tagName;
+      return tag === "INPUT" || tag === "TEXTAREA" || (n as HTMLElement).isContentEditable;
+    };
+    const down = (e: KeyboardEvent) => {
+      if (isTyping(e.target)) return;
+      if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "w", "a", "s", "d", "W", "A", "S", "D"].includes(e.key)) {
+        keys.current[e.key] = true;
+        e.preventDefault();
+      }
+    };
+    const up = (e: KeyboardEvent) => {
+      keys.current[e.key] = false;
+    };
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+    return () => {
+      window.removeEventListener("keydown", down);
+      window.removeEventListener("keyup", up);
+    };
+  }, []);
+
+  useFrame((_, delta) => {
+    const c = controlsRef.current;
+    if (!c) return;
+    const k = keys.current;
+    const speed = 600 * delta * Math.max(0.5, camera.position.y / 400);
+    // forward = from camera toward target, flattened on ground plane
+    const fwd = new THREE.Vector3().subVectors(c.target, camera.position);
+    fwd.y = 0;
+    if (fwd.lengthSq() < 0.0001) fwd.set(0, 0, -1);
+    fwd.normalize();
+    const right = new THREE.Vector3(fwd.z, 0, -fwd.x);
+    const move = new THREE.Vector3();
+    if (k["ArrowUp"] || k["w"] || k["W"]) move.add(fwd);
+    if (k["ArrowDown"] || k["s"] || k["S"]) move.sub(fwd);
+    if (k["ArrowRight"] || k["d"] || k["D"]) move.add(right);
+    if (k["ArrowLeft"] || k["a"] || k["A"]) move.sub(right);
+    if (move.lengthSq() > 0) {
+      move.normalize().multiplyScalar(speed);
+      camera.position.add(move);
+      c.target.add(move);
+      c.update();
+    }
+  });
+
   // Disable orbit when actively placing (left button) so it doesn't fight raycasts.
   const enabled = tool.kind !== "build";
   return (
     <OrbitControls
+      ref={controlsRef}
       enabled
       enableDamping
       dampingFactor={0.08}
