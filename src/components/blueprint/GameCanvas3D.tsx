@@ -1,6 +1,6 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
-import { OrbitControls, Sky, Cloud, Clouds, Environment } from "@react-three/drei";
+import { OrbitControls, Sky, Cloud, Clouds } from "@react-three/drei";
 import * as THREE from "three";
 import { newId, snap, snapRoadEndpoint, useGame } from "@/lib/blueprint/store";
 import type {
@@ -89,7 +89,7 @@ export function GameCanvas3D() {
     <div className="absolute inset-0">
       <Canvas
         shadows
-        dpr={[1, 2]}
+        dpr={[1, 1.5]}
         gl={{ antialias: true, powerPreference: "high-performance" }}
         camera={{ position: [600, 600, 600], fov: 45, near: 1, far: 8000 }}
         onCreated={(s) => {
@@ -133,24 +133,22 @@ function Scene() {
         intensity={1.4 * nightFactor}
         color={nightFactor < 0.5 ? "#7a8fbf" : "#fff4d6"}
         castShadow
-        shadow-mapSize={[2048, 2048]}
-        shadow-camera-left={-1500}
-        shadow-camera-right={1500}
-        shadow-camera-top={1500}
-        shadow-camera-bottom={-1500}
+        shadow-mapSize={[1024, 1024]}
+        shadow-camera-left={-1200}
+        shadow-camera-right={1200}
+        shadow-camera-top={1200}
+        shadow-camera-bottom={-1200}
         shadow-camera-near={1}
-        shadow-camera-far={4000}
+        shadow-camera-far={3000}
         shadow-bias={-0.0005}
       />
 
       {nightFactor > 0.5 && <Sky sunPosition={sun.toArray()} turbidity={6} rayleigh={1.4} mieCoefficient={0.005} />}
-      <Environment preset="city" />
 
       {nightFactor > 0.5 && (
-        <Clouds material={THREE.MeshLambertMaterial} limit={20}>
-          <Cloud seed={1} segments={20} bounds={[400, 80, 400]} volume={120} position={[200, 700, -300]} color="#ffffff" opacity={0.6} />
-          <Cloud seed={2} segments={20} bounds={[400, 80, 400]} volume={120} position={[-600, 600, 400]} color="#ffffff" opacity={0.5} />
-          <Cloud seed={3} segments={20} bounds={[400, 80, 400]} volume={120} position={[800, 650, 800]} color="#ffffff" opacity={0.55} />
+        <Clouds material={THREE.MeshLambertMaterial} limit={6}>
+          <Cloud seed={1} segments={8} bounds={[400, 60, 400]} volume={80} position={[200, 700, -300]} color="#ffffff" opacity={0.55} />
+          <Cloud seed={2} segments={8} bounds={[400, 60, 400]} volume={80} position={[-600, 600, 400]} color="#ffffff" opacity={0.45} />
         </Clouds>
       )}
 
@@ -169,10 +167,64 @@ function Scene() {
 
 function CameraControls() {
   const tool = useGame((s) => s.tool);
+  const controlsRef = useRef<any>(null);
+  const { camera } = useThree();
+  const keys = useRef<Record<string, boolean>>({});
+
+  useEffect(() => {
+    const isTyping = (el: EventTarget | null) => {
+      const n = el as HTMLElement | null;
+      if (!n) return false;
+      const tag = n.tagName;
+      return tag === "INPUT" || tag === "TEXTAREA" || (n as HTMLElement).isContentEditable;
+    };
+    const down = (e: KeyboardEvent) => {
+      if (isTyping(e.target)) return;
+      if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "w", "a", "s", "d", "W", "A", "S", "D"].includes(e.key)) {
+        keys.current[e.key] = true;
+        e.preventDefault();
+      }
+    };
+    const up = (e: KeyboardEvent) => {
+      keys.current[e.key] = false;
+    };
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+    return () => {
+      window.removeEventListener("keydown", down);
+      window.removeEventListener("keyup", up);
+    };
+  }, []);
+
+  useFrame((_, delta) => {
+    const c = controlsRef.current;
+    if (!c) return;
+    const k = keys.current;
+    const speed = 600 * delta * Math.max(0.5, camera.position.y / 400);
+    // forward = from camera toward target, flattened on ground plane
+    const fwd = new THREE.Vector3().subVectors(c.target, camera.position);
+    fwd.y = 0;
+    if (fwd.lengthSq() < 0.0001) fwd.set(0, 0, -1);
+    fwd.normalize();
+    const right = new THREE.Vector3(fwd.z, 0, -fwd.x);
+    const move = new THREE.Vector3();
+    if (k["ArrowUp"] || k["w"] || k["W"]) move.add(fwd);
+    if (k["ArrowDown"] || k["s"] || k["S"]) move.sub(fwd);
+    if (k["ArrowRight"] || k["d"] || k["D"]) move.add(right);
+    if (k["ArrowLeft"] || k["a"] || k["A"]) move.sub(right);
+    if (move.lengthSq() > 0) {
+      move.normalize().multiplyScalar(speed);
+      camera.position.add(move);
+      c.target.add(move);
+      c.update();
+    }
+  });
+
   // Disable orbit when actively placing (left button) so it doesn't fight raycasts.
   const enabled = tool.kind !== "build";
   return (
     <OrbitControls
+      ref={controlsRef}
       enabled
       enableDamping
       dampingFactor={0.08}
@@ -474,35 +526,49 @@ function Building3D({ obj }: { obj: Building }) {
 function WindowStrips({ width, depth, height }: { width: number; depth: number; height: number }) {
   const timeOfDay = useGame((s) => s.city.timeOfDay);
   const isNight = timeOfDay < 6 || timeOfDay > 19;
-  const rows = Math.max(1, Math.floor(height / 14));
-  const cols = Math.max(1, Math.floor(width / 14));
-  const items = [];
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const x = -width / 2 + (c + 0.5) * (width / cols);
-      const y = 6 + r * 14;
-      const lit = isNight && Math.random() > 0.4;
-      items.push(
-        <mesh key={`f-${r}-${c}`} position={[x, y, depth / 2 + 0.1]}>
-          <planeGeometry args={[8, 8]} />
-          <meshStandardMaterial
-            color={lit ? "#ffe9a8" : "#2a3a4a"}
-            emissive={lit ? "#ffd070" : "#000"}
-            emissiveIntensity={lit ? 1.5 : 0}
-          />
-        </mesh>,
-        <mesh key={`b-${r}-${c}`} position={[x, y, -depth / 2 - 0.1]} rotation={[0, Math.PI, 0]}>
-          <planeGeometry args={[8, 8]} />
-          <meshStandardMaterial
-            color={lit ? "#ffe9a8" : "#2a3a4a"}
-            emissive={lit ? "#ffd070" : "#000"}
-            emissiveIntensity={lit ? 1.5 : 0}
-          />
-        </mesh>,
-      );
-    }
-  }
-  return <>{items}</>;
+  // Bake the entire window grid into one canvas texture per (w,h) — one
+  // draw call per face instead of hundreds.
+  const { texDay, texNight } = useMemo(() => {
+    const cols = Math.max(1, Math.min(16, Math.floor(width / 18)));
+    const rows = Math.max(1, Math.min(16, Math.floor(height / 18)));
+    const make = (lit: boolean) => {
+      const c = document.createElement("canvas");
+      c.width = 256;
+      c.height = 256;
+      const g = c.getContext("2d")!;
+      g.fillStyle = "rgba(0,0,0,0)";
+      g.clearRect(0, 0, 256, 256);
+      const cw = 256 / cols;
+      const rh = 256 / rows;
+      for (let r = 0; r < rows; r++) {
+        for (let cc = 0; cc < cols; cc++) {
+          // deterministic pseudo-random per cell
+          const seed = Math.sin(r * 12.9898 + cc * 78.233) * 43758.5453;
+          const on = lit && (seed - Math.floor(seed)) > 0.45;
+          g.fillStyle = on ? "#ffd97a" : "#2a3a4a";
+          g.fillRect(cc * cw + 2, r * rh + 2, cw - 4, rh - 4);
+        }
+      }
+      const t = new THREE.CanvasTexture(c);
+      t.anisotropy = 4;
+      return t;
+    };
+    return { texDay: make(false), texNight: make(true) };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [Math.round(width / 10), Math.round(height / 10)]);
+  const tex = isNight ? texNight : texDay;
+  return (
+    <>
+      <mesh position={[0, height / 2, depth / 2 + 0.1]}>
+        <planeGeometry args={[width * 0.9, height * 0.85]} />
+        <meshStandardMaterial map={tex} emissiveMap={isNight ? tex : null} emissive={isNight ? "#ffb060" : "#000"} emissiveIntensity={isNight ? 1.2 : 0} />
+      </mesh>
+      <mesh position={[0, height / 2, -depth / 2 - 0.1]} rotation={[0, Math.PI, 0]}>
+        <planeGeometry args={[width * 0.9, height * 0.85]} />
+        <meshStandardMaterial map={tex} emissiveMap={isNight ? tex : null} emissive={isNight ? "#ffb060" : "#000"} emissiveIntensity={isNight ? 1.2 : 0} />
+      </mesh>
+    </>
+  );
 }
 
 /* ─────────────── Nature ─────────────── */
