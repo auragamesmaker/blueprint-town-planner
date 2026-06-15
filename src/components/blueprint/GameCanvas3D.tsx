@@ -1,6 +1,6 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
-import { OrbitControls, Sky, Cloud, Clouds, Environment } from "@react-three/drei";
+import { OrbitControls, Sky, Cloud, Clouds } from "@react-three/drei";
 import * as THREE from "three";
 import { newId, snap, snapRoadEndpoint, useGame } from "@/lib/blueprint/store";
 import type {
